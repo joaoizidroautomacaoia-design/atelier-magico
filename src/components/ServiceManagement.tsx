@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,11 +7,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Edit, Trash2, Scissors, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Service {
   id: string;
   name: string;
   price: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 const ServiceManagement = () => {
@@ -19,9 +22,34 @@ const ServiceManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [formData, setFormData] = useState({ name: "", price: "" });
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  const fetchServices = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setServices(data || []);
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar serviços.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name.trim() || !formData.price.trim()) {
@@ -43,32 +71,43 @@ const ServiceManagement = () => {
       return;
     }
 
-    if (editingService) {
-      setServices(services.map(service => 
-        service.id === editingService.id 
-          ? { ...service, name: formData.name, price }
-          : service
-      ));
+    try {
+      if (editingService) {
+        const { error } = await supabase
+          .from('services')
+          .update({ name: formData.name, price })
+          .eq('id', editingService.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Sucesso",
+          description: "Serviço editado com sucesso!",
+        });
+      } else {
+        const { error } = await supabase
+          .from('services')
+          .insert([{ name: formData.name, price }]);
+
+        if (error) throw error;
+
+        toast({
+          title: "Sucesso",
+          description: "Serviço cadastrado com sucesso!",
+        });
+      }
+
+      setFormData({ name: "", price: "" });
+      setEditingService(null);
+      setIsDialogOpen(false);
+      fetchServices();
+    } catch (error) {
       toast({
-        title: "Sucesso",
-        description: "Serviço editado com sucesso!",
-      });
-    } else {
-      const newService: Service = {
-        id: Date.now().toString(),
-        name: formData.name,
-        price,
-      };
-      setServices([...services, newService]);
-      toast({
-        title: "Sucesso",
-        description: "Serviço cadastrado com sucesso!",
+        title: "Erro",
+        description: "Erro ao salvar serviço.",
+        variant: "destructive",
       });
     }
-
-    setFormData({ name: "", price: "" });
-    setEditingService(null);
-    setIsDialogOpen(false);
   };
 
   const handleEdit = (service: Service) => {
@@ -77,12 +116,27 @@ const ServiceManagement = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    setServices(services.filter(service => service.id !== id));
-    toast({
-      title: "Sucesso",
-      description: "Serviço excluído com sucesso!",
-    });
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('services')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Serviço excluído com sucesso!",
+      });
+      fetchServices();
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao excluir serviço.",
+        variant: "destructive",
+      });
+    }
   };
 
   const openNewDialog = () => {
@@ -169,7 +223,11 @@ const ServiceManagement = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {services.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Carregando serviços...</p>
+            </div>
+          ) : services.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Scissors className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium">Nenhum serviço cadastrado</p>

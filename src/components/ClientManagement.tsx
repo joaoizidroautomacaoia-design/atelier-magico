@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,11 +7,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Edit, Trash2, User, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Client {
   id: string;
   name: string;
   phone: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 const ClientManagement = () => {
@@ -19,9 +22,34 @@ const ClientManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState({ name: "", phone: "" });
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  const fetchClients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setClients(data || []);
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar clientes.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name.trim() || !formData.phone.trim()) {
@@ -33,31 +61,43 @@ const ClientManagement = () => {
       return;
     }
 
-    if (editingClient) {
-      setClients(clients.map(client => 
-        client.id === editingClient.id 
-          ? { ...client, ...formData }
-          : client
-      ));
+    try {
+      if (editingClient) {
+        const { error } = await supabase
+          .from('clients')
+          .update({ name: formData.name, phone: formData.phone })
+          .eq('id', editingClient.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Sucesso",
+          description: "Cliente editado com sucesso!",
+        });
+      } else {
+        const { error } = await supabase
+          .from('clients')
+          .insert([{ name: formData.name, phone: formData.phone }]);
+
+        if (error) throw error;
+
+        toast({
+          title: "Sucesso",
+          description: "Cliente cadastrado com sucesso!",
+        });
+      }
+
+      setFormData({ name: "", phone: "" });
+      setEditingClient(null);
+      setIsDialogOpen(false);
+      fetchClients();
+    } catch (error) {
       toast({
-        title: "Sucesso",
-        description: "Cliente editado com sucesso!",
-      });
-    } else {
-      const newClient: Client = {
-        id: Date.now().toString(),
-        ...formData,
-      };
-      setClients([...clients, newClient]);
-      toast({
-        title: "Sucesso",
-        description: "Cliente cadastrado com sucesso!",
+        title: "Erro",
+        description: "Erro ao salvar cliente.",
+        variant: "destructive",
       });
     }
-
-    setFormData({ name: "", phone: "" });
-    setEditingClient(null);
-    setIsDialogOpen(false);
   };
 
   const handleEdit = (client: Client) => {
@@ -66,12 +106,27 @@ const ClientManagement = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    setClients(clients.filter(client => client.id !== id));
-    toast({
-      title: "Sucesso",
-      description: "Cliente excluído com sucesso!",
-    });
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Cliente excluído com sucesso!",
+      });
+      fetchClients();
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao excluir cliente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const openNewDialog = () => {
@@ -148,7 +203,11 @@ const ClientManagement = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {clients.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Carregando clientes...</p>
+            </div>
+          ) : clients.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium">Nenhum cliente cadastrado</p>
