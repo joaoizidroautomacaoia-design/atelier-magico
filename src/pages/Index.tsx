@@ -106,24 +106,7 @@ const Index = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-6">
-              <Card className="shadow-card hover:shadow-elegant transition-smooth cursor-pointer" 
-                    onClick={() => setActiveTab('orders')}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    Gestão de Pedidos
-                  </CardTitle>
-                  <CardDescription>
-                    Crie e acompanhe os pedidos dos clientes - Pedidos do dia
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button className="w-full">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Gerenciar Pedidos
-                  </Button>
-                </CardContent>
-              </Card>
+              <OrderManagement />
             </div>
           </div>
         )}

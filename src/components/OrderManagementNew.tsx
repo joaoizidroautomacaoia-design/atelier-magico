@@ -6,9 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, FileText, X, Check } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, X, Check, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -76,6 +77,8 @@ const OrderManagement = () => {
   const [discount, setDiscount] = useState(0);
   const [generalObservations, setGeneralObservations] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("não pago");
+  const [activeTab, setActiveTab] = useState<'pagos' | 'nao-pagos'>('nao-pagos');
+  const [observationsDialog, setObservationsDialog] = useState<Order | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -375,27 +378,62 @@ const OrderManagement = () => {
     setIsDialogOpen(false);
   };
 
-  const confirmOrder = async (orderId: string) => {
+  const confirmPayment = async (orderId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'pago' ? 'não pago' : 'pago';
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ confirmed: true })
+        .update({ payment_status: newStatus })
         .eq('id', orderId);
 
       if (error) throw error;
 
       toast({
         title: "Sucesso",
-        description: "Pedido confirmado!",
+        description: `Status alterado para ${newStatus}!`,
       });
       fetchData();
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Erro ao confirmar pedido.",
+        description: "Erro ao alterar status de pagamento.",
         variant: "destructive",
       });
     }
+  };
+
+  const editOrder = (order: Order) => {
+    setEditingOrder(order);
+    setClientName(order.clients?.name || "");
+    setClientPhone(order.clients?.phone || "");
+    setExistingClient(order.clients || null);
+    setDiscount(order.discount);
+    setGeneralObservations(order.general_observations || "");
+    setPaymentStatus(order.payment_status);
+    
+    // Reconstruct garments from order_services
+    const garmentGroups = order.order_services?.reduce((groups: any, os) => {
+      const garmentName = os.garment_name || 'Sem nome';
+      if (!groups[garmentName]) {
+        groups[garmentName] = [];
+      }
+      groups[garmentName].push({
+        serviceId: os.service_id,
+        serviceName: os.services.name,
+        price: os.services.price,
+        individualDiscount: os.individual_discount,
+        observation: os.observations || ""
+      });
+      return groups;
+    }, {}) || {};
+
+    const reconstructedGarments = Object.entries(garmentGroups).map(([name, services]: [string, any]) => ({
+      name,
+      services
+    }));
+
+    setGarments(reconstructedGarments);
+    setIsDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -439,6 +477,14 @@ const OrderManagement = () => {
     );
   };
 
+  const getFilteredOrders = () => {
+    const todaysOrders = getTodaysOrders();
+    return todaysOrders.filter(order => 
+      activeTab === 'pagos' ? order.payment_status === 'pago' : order.payment_status === 'não pago'
+    );
+  };
+
+  const filteredOrders = getFilteredOrders();
   const todaysOrders = getTodaysOrders();
 
   return (
@@ -464,9 +510,9 @@ const OrderManagement = () => {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Novo Pedido</DialogTitle>
+                  <DialogTitle>{editingOrder ? 'Editar Pedido' : 'Novo Pedido'}</DialogTitle>
                   <DialogDescription>
-                    Crie um novo pedido selecionando cliente e serviços.
+                    {editingOrder ? 'Edite os dados do pedido.' : 'Crie um novo pedido selecionando cliente e serviços.'}
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -706,109 +752,182 @@ const OrderManagement = () => {
               <p className="text-sm">Os pedidos de hoje aparecerão aqui</p>
             </div>
           ) : (
-            <div className="rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead>Serviços</TableHead>
-                    <TableHead>Observações</TableHead>
-                    <TableHead>Pagamento</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-[120px]">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {todaysOrders.map((order) => (
-                    <TableRow key={order.id} className="hover:bg-muted/50 transition-smooth">
-                      <TableCell className="font-medium">{order.clients?.name}</TableCell>
-                      <TableCell>{order.clients?.phone}</TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          {order.order_services?.reduce((groups: any, os) => {
-                            const garmentName = os.garment_name || 'Sem nome';
-                            if (!groups[garmentName]) {
-                              groups[garmentName] = [];
-                            }
-                            groups[garmentName].push(os);
-                            return groups;
-                          }, {}) && Object.entries(
-                            order.order_services?.reduce((groups: any, os) => {
-                              const garmentName = os.garment_name || 'Sem nome';
-                              if (!groups[garmentName]) {
-                                groups[garmentName] = [];
-                              }
-                              groups[garmentName].push(os);
-                              return groups;
-                            }, {}) || {}
-                          ).map(([garmentName, services]: [string, any]) => (
-                            <div key={garmentName} className="text-sm">
-                              <strong>{garmentName}:</strong>
-                              <div className="ml-2">
-                                {services.map((os: any) => (
-                                  <div key={os.id}>• {os.services.name}</div>
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'pagos' | 'nao-pagos')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="nao-pagos">Não Pagos ({todaysOrders.filter(o => o.payment_status === 'não pago').length})</TabsTrigger>
+                <TabsTrigger value="pagos">Pagos ({todaysOrders.filter(o => o.payment_status === 'pago').length})</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value={activeTab} className="mt-4">
+                {filteredOrders.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Nenhum pedido {activeTab === 'pagos' ? 'pago' : 'não pago'} hoje</p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Telefone</TableHead>
+                          <TableHead>Serviços</TableHead>
+                          <TableHead>Observações</TableHead>
+                          <TableHead>Total</TableHead>
+                          <TableHead className="w-[150px]">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredOrders.map((order) => (
+                          <TableRow key={order.id} className="hover:bg-muted/50 transition-smooth">
+                            <TableCell className="font-medium">{order.clients?.name}</TableCell>
+                            <TableCell>{order.clients?.phone}</TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                {order.order_services?.reduce((groups: any, os) => {
+                                  const garmentName = os.garment_name || 'Sem nome';
+                                  if (!groups[garmentName]) {
+                                    groups[garmentName] = [];
+                                  }
+                                  groups[garmentName].push(os);
+                                  return groups;
+                                }, {}) && Object.entries(
+                                  order.order_services?.reduce((groups: any, os) => {
+                                    const garmentName = os.garment_name || 'Sem nome';
+                                    if (!groups[garmentName]) {
+                                      groups[garmentName] = [];
+                                    }
+                                    groups[garmentName].push(os);
+                                    return groups;
+                                  }, {}) || {}
+                                ).map(([garmentName, services]: [string, any]) => (
+                                  <div key={garmentName} className="text-sm">
+                                    <strong>{garmentName}:</strong>
+                                    <div className="ml-2">
+                                      {services.map((os: any) => (
+                                        <div key={os.id}>• {os.services.name}</div>
+                                      ))}
+                                    </div>
+                                  </div>
                                 ))}
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-[150px] truncate">
-                        {order.general_observations || "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={order.payment_status === 'pago' ? 'default' : 'secondary'}>
-                          {order.payment_status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-bold">
-                        {formatCurrency(order.total)}
-                      </TableCell>
-                      <TableCell>
-                        {order.confirmed ? (
-                          <Badge variant="default" className="bg-green-600">
-                            Confirmado
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">
-                            Pendente
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-1">
-                          {!order.confirmed && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => confirmOrder(order.id)}
-                              className="h-8 w-8 p-0 text-green-600 hover:text-green-600"
-                              title="Confirmar"
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(order.id)}
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                            title="Excluir"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setObservationsDialog(order)}
+                                className="h-8 px-2 text-blue-600 hover:text-blue-600"
+                                title="Ver Observações"
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Ver
+                              </Button>
+                            </TableCell>
+                            <TableCell className="font-bold">
+                              {formatCurrency(order.total)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center space-x-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => confirmPayment(order.id, order.payment_status)}
+                                  className="h-8 w-8 p-0 text-green-600 hover:text-green-600"
+                                  title="Confirmar Pagamento"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => editOrder(order)}
+                                  className="h-8 w-8 p-0 text-blue-600 hover:text-blue-600"
+                                  title="Editar"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDelete(order.id)}
+                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                  title="Excluir"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog de Observações */}
+      <Dialog open={!!observationsDialog} onOpenChange={() => setObservationsDialog(null)}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Observações do Pedido</DialogTitle>
+            <DialogDescription>
+              Cliente: {observationsDialog?.clients?.name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {observationsDialog?.general_observations && (
+              <div>
+                <h4 className="font-medium text-sm mb-2">Observações Gerais:</h4>
+                <p className="text-sm bg-muted p-3 rounded-lg">
+                  {observationsDialog.general_observations}
+                </p>
+              </div>
+            )}
+            
+            <div>
+              <h4 className="font-medium text-sm mb-2">Observações por Serviço:</h4>
+              <div className="space-y-3">
+                {observationsDialog?.order_services?.reduce((groups: any, os) => {
+                  const garmentName = os.garment_name || 'Sem nome';
+                  if (!groups[garmentName]) {
+                    groups[garmentName] = [];
+                  }
+                  groups[garmentName].push(os);
+                  return groups;
+                }, {}) && Object.entries(
+                  observationsDialog?.order_services?.reduce((groups: any, os) => {
+                    const garmentName = os.garment_name || 'Sem nome';
+                    if (!groups[garmentName]) {
+                      groups[garmentName] = [];
+                    }
+                    groups[garmentName].push(os);
+                    return groups;
+                  }, {}) || {}
+                ).map(([garmentName, services]: [string, any]) => (
+                  <div key={garmentName} className="border rounded-lg p-3">
+                    <h5 className="font-medium text-sm mb-2">{garmentName}:</h5>
+                    <div className="space-y-2">
+                      {services.map((os: any) => (
+                        <div key={os.id} className="text-sm">
+                          <strong>• {os.services.name}:</strong>
+                          <p className="ml-4 text-muted-foreground">
+                            {os.observations || "Sem observações"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
