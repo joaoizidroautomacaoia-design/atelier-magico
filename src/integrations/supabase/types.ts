@@ -41,21 +41,27 @@ export type Database = {
       order_services: {
         Row: {
           created_at: string
+          garment_name: string | null
           id: string
+          individual_discount: number | null
           observations: string | null
           order_id: string
           service_id: string
         }
         Insert: {
           created_at?: string
+          garment_name?: string | null
           id?: string
+          individual_discount?: number | null
           observations?: string | null
           order_id: string
           service_id: string
         }
         Update: {
           created_at?: string
+          garment_name?: string | null
           id?: string
+          individual_discount?: number | null
           observations?: string | null
           order_id?: string
           service_id?: string
@@ -80,28 +86,34 @@ export type Database = {
       orders: {
         Row: {
           client_id: string
+          confirmed: boolean | null
           created_at: string
           discount: number | null
           general_observations: string | null
           id: string
+          payment_status: string | null
           total: number
           updated_at: string
         }
         Insert: {
           client_id: string
+          confirmed?: boolean | null
           created_at?: string
           discount?: number | null
           general_observations?: string | null
           id?: string
+          payment_status?: string | null
           total: number
           updated_at?: string
         }
         Update: {
           client_id?: string
+          confirmed?: boolean | null
           created_at?: string
           discount?: number | null
           general_observations?: string | null
           id?: string
+          payment_status?: string | null
           total?: number
           updated_at?: string
         }

@@ -1,19 +1,41 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, Scissors, FileText, Plus } from "lucide-react";
 import ClientManagement from "@/components/ClientManagement";
 import ServiceManagement from "@/components/ServiceManagement";
-import OrderManagement from "@/components/OrderManagement";
+import OrderManagement from "@/components/OrderManagementNew";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'services' | 'orders'>('dashboard');
-
-  const stats = [
+  const [stats, setStats] = useState([
     { title: "Clientes", value: "0", icon: Users, color: "bg-gradient-primary" },
     { title: "Serviços", value: "0", icon: Scissors, color: "bg-gradient-secondary" },
     { title: "Pedidos", value: "0", icon: FileText, color: "bg-gradient-accent" },
-  ];
+  ]);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [clientsData, servicesData, ordersData] = await Promise.all([
+          supabase.from('clients').select('*', { count: 'exact' }),
+          supabase.from('services').select('*', { count: 'exact' }),
+          supabase.from('orders').select('*', { count: 'exact' })
+        ]);
+
+        setStats([
+          { title: "Clientes", value: clientsData.count?.toString() || "0", icon: Users, color: "bg-gradient-primary" },
+          { title: "Serviços", value: servicesData.count?.toString() || "0", icon: Scissors, color: "bg-gradient-secondary" },
+          { title: "Pedidos", value: ordersData.count?.toString() || "0", icon: FileText, color: "bg-gradient-accent" },
+        ]);
+      } catch (error) {
+        console.error('Erro ao carregar estatísticas:', error);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-accent">
@@ -83,45 +105,7 @@ const Index = () => {
               ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="shadow-card hover:shadow-elegant transition-smooth cursor-pointer" 
-                    onClick={() => setActiveTab('clients')}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-primary" />
-                    Gestão de Clientes
-                  </CardTitle>
-                  <CardDescription>
-                    Cadastre e gerencie informações dos seus clientes
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button className="w-full">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Gerenciar Clientes
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-card hover:shadow-elegant transition-smooth cursor-pointer" 
-                    onClick={() => setActiveTab('services')}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Scissors className="h-5 w-5 text-primary" />
-                    Gestão de Serviços
-                  </CardTitle>
-                  <CardDescription>
-                    Cadastre os serviços e valores do seu ateliê
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button className="w-full">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Gerenciar Serviços
-                  </Button>
-                </CardContent>
-              </Card>
-
+            <div className="grid grid-cols-1 gap-6">
               <Card className="shadow-card hover:shadow-elegant transition-smooth cursor-pointer" 
                     onClick={() => setActiveTab('orders')}>
                 <CardHeader>
@@ -130,7 +114,7 @@ const Index = () => {
                     Gestão de Pedidos
                   </CardTitle>
                   <CardDescription>
-                    Crie e acompanhe os pedidos dos clientes
+                    Crie e acompanhe os pedidos dos clientes - Pedidos do dia
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
