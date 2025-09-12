@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Plus, Edit, Trash2, FileText, X, Check, Eye, ChevronDown, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import QRCode from "qrcode";
 
 interface Client {
   id: string;
@@ -501,7 +502,64 @@ const OrderManagement = () => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
-  const printOrder = (order: Order) => {
+  const generatePixQRCode = async (value: number): Promise<string> => {
+    // Gerar o código Pix no formato oficial BR Code
+    const pixKey = "42346335851";
+    const amount = value.toFixed(2);
+    
+    // Formato do código Pix (BR Code)
+    const payload = [
+      "000201", // Payload Format Indicator
+      "010212", // Point of Initiation Method
+      "26580014BR.GOV.BCB.PIX01" + String(pixKey.length).padStart(2, '0') + pixKey, // Merchant Account Information
+      "5204" + "0000", // Merchant Category Code
+      "5303986", // Transaction Currency (986 = BRL)
+      "54" + String(amount.length).padStart(2, '0') + amount, // Transaction Amount
+      "5802BR", // Country Code
+      "590" + String("Pagamento".length).padStart(2, '0') + "Pagamento", // Merchant Name
+      "6008BRASILIA", // Merchant City
+      "62070503***", // Additional Data Field Template
+    ].join("");
+    
+    // Calcular CRC16
+    const crc16 = (data: string): string => {
+      let crc = 0xFFFF;
+      const polynomial = 0x1021;
+      
+      for (let i = 0; i < data.length; i++) {
+        crc ^= (data.charCodeAt(i) << 8);
+        for (let j = 0; j < 8; j++) {
+          if (crc & 0x8000) {
+            crc = (crc << 1) ^ polynomial;
+          } else {
+            crc <<= 1;
+          }
+          crc &= 0xFFFF;
+        }
+      }
+      
+      return crc.toString(16).toUpperCase().padStart(4, '0');
+    };
+    
+    const finalPayload = payload + "6304" + crc16(payload + "6304");
+    
+    try {
+      const qrCodeDataURL = await QRCode.toDataURL(finalPayload, {
+        width: 200,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+      return qrCodeDataURL;
+    } catch (error) {
+      console.error('Erro ao gerar QR Code:', error);
+      return '';
+    }
+  };
+
+  const printOrder = async (order: Order) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
@@ -514,6 +572,9 @@ const OrderManagement = () => {
       groups[garmentName].push(os);
       return groups;
     }, {});
+
+    // Gerar QR Code Pix
+    const qrCodeImage = await generatePixQRCode(order.total);
 
     const printContent = `
       <!DOCTYPE html>
@@ -530,6 +591,8 @@ const OrderManagement = () => {
             .total-section { margin-top: 30px; border-top: 2px solid #000; padding-top: 20px; text-align: right; }
             .total-line { margin-bottom: 5px; }
             .final-total { font-weight: bold; font-size: 18px; }
+            .pix-section { margin-top: 40px; border-top: 2px solid #000; padding-top: 20px; text-align: center; page-break-inside: avoid; }
+            .qr-code { margin: 20px 0; }
             @media print { body { margin: 0; } }
           </style>
         </head>
@@ -572,6 +635,20 @@ const OrderManagement = () => {
             <div class="total-line">Subtotal: ${formatCurrency(order.total + (order.total * order.discount / (100 - order.discount)))}</div>
             ${order.discount > 0 ? `<div class="total-line">Desconto Geral: ${order.discount}%</div>` : ''}
             <div class="final-total">Total: ${formatCurrency(order.total)}</div>
+          </div>
+          
+          <div class="pix-section">
+            <h3>Pagamento via Pix</h3>
+            <p><strong>Chave Pix:</strong> 42346335851</p>
+            <p><strong>Valor:</strong> ${formatCurrency(order.total)}</p>
+            ${qrCodeImage ? `
+              <div class="qr-code">
+                <img src="${qrCodeImage}" alt="QR Code Pix" style="width: 200px; height: 200px;" />
+              </div>
+              <p style="font-size: 12px; color: #666;">
+                Escaneie o QR Code com seu aplicativo bancário para efetuar o pagamento
+              </p>
+            ` : ''}
           </div>
         </body>
       </html>
@@ -631,29 +708,42 @@ const OrderManagement = () => {
                    <div className="grid grid-cols-2 gap-4">
                      <div className="space-y-2 relative">
                        <Label htmlFor="clientName">Nome do Cliente</Label>
-                       <Input
-                         id="clientName"
-                         value={clientName}
-                         onChange={(e) => handleClientNameChange(e.target.value)}
-                         placeholder="Digite o nome do cliente..."
-                         required
-                         onFocus={() => clientSuggestions.length > 0 && setShowClientSuggestions(true)}
-                         onBlur={() => setTimeout(() => setShowClientSuggestions(false), 200)}
-                       />
-                       {showClientSuggestions && clientSuggestions.length > 0 && (
-                         <div className="absolute top-full left-0 right-0 z-50 bg-background border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
-                           {clientSuggestions.map((client) => (
-                             <div
-                               key={client.id}
-                               className="p-3 hover:bg-muted cursor-pointer border-b last:border-b-0"
-                               onClick={() => selectClient(client)}
-                             >
-                               <div className="font-medium text-foreground">{client.name}</div>
-                               <div className="text-sm text-muted-foreground">{client.phone}</div>
-                             </div>
-                           ))}
-                         </div>
-                       )}
+                       <Popover open={showClientSuggestions} onOpenChange={setShowClientSuggestions}>
+                         <PopoverTrigger asChild>
+                           <div className="relative">
+                             <Input
+                               id="clientName"
+                               value={clientName}
+                               onChange={(e) => handleClientNameChange(e.target.value)}
+                               placeholder="Digite para buscar cliente..."
+                               required
+                               onFocus={() => clientSuggestions.length > 0 && setShowClientSuggestions(true)}
+                             />
+                           </div>
+                         </PopoverTrigger>
+                         <PopoverContent className="w-80 p-0" align="start">
+                           <Command>
+                             <CommandInput placeholder="Buscar cliente..." value={clientName} onValueChange={handleClientNameChange} />
+                             <CommandList>
+                               <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                               <CommandGroup>
+                                 {clientSuggestions.map((client) => (
+                                   <CommandItem
+                                     key={client.id}
+                                     value={client.name}
+                                     onSelect={() => selectClient(client)}
+                                   >
+                                     <div className="flex flex-col w-full">
+                                       <span className="font-medium">{client.name}</span>
+                                       <span className="text-sm text-muted-foreground">{client.phone}</span>
+                                     </div>
+                                   </CommandItem>
+                                 ))}
+                               </CommandGroup>
+                             </CommandList>
+                           </Command>
+                         </PopoverContent>
+                       </Popover>
                        {existingClient && (
                          <p className="text-sm text-green-600">
                            Cliente encontrado: {existingClient.name}
