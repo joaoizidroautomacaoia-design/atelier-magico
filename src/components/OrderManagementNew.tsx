@@ -9,7 +9,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, FileText, X, Check, Eye } from "lucide-react";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Plus, Edit, Trash2, FileText, X, Check, Eye, ChevronDown, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -79,6 +81,9 @@ const OrderManagement = () => {
   const [paymentStatus, setPaymentStatus] = useState("não pago");
   const [activeTab, setActiveTab] = useState<'pagos' | 'nao-pagos'>('nao-pagos');
   const [observationsDialog, setObservationsDialog] = useState<Order | null>(null);
+  const [clientSuggestions, setClientSuggestions] = useState<Client[]>([]);
+  const [showClientSuggestions, setShowClientSuggestions] = useState(false);
+  const [serviceSearchOpen, setServiceSearchOpen] = useState<number[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -138,9 +143,15 @@ const OrderManagement = () => {
   const handleClientNameChange = (name: string) => {
     setClientName(name);
     
-    if (name.length > 2) {
-      const foundClient = clients.find(client => 
+    if (name.length > 1) {
+      const filtered = clients.filter(client => 
         client.name.toLowerCase().includes(name.toLowerCase())
+      );
+      setClientSuggestions(filtered);
+      setShowClientSuggestions(filtered.length > 0);
+      
+      const foundClient = clients.find(client => 
+        client.name.toLowerCase() === name.toLowerCase()
       );
       
       if (foundClient) {
@@ -150,8 +161,17 @@ const OrderManagement = () => {
         setExistingClient(null);
       }
     } else {
+      setClientSuggestions([]);
+      setShowClientSuggestions(false);
       setExistingClient(null);
     }
+  };
+
+  const selectClient = (client: Client) => {
+    setClientName(client.name);
+    setClientPhone(client.phone);
+    setExistingClient(client);
+    setShowClientSuggestions(false);
   };
 
   const handlePhoneChange = (phone: string) => {
@@ -219,15 +239,26 @@ const OrderManagement = () => {
     return service.price - discountAmount;
   };
 
-  const calculateTotal = () => {
-    const subtotal = garments.reduce((total, garment) => {
+  const calculateSubtotal = () => {
+    return garments.reduce((total, garment) => {
+      return total + garment.services.reduce((garmentTotal, service) => {
+        return garmentTotal + service.price;
+      }, 0);
+    }, 0);
+  };
+
+  const calculateTotalWithServiceDiscounts = () => {
+    return garments.reduce((total, garment) => {
       return total + garment.services.reduce((garmentTotal, service) => {
         return garmentTotal + calculateServiceTotal(service);
       }, 0);
     }, 0);
-    
-    const discountAmount = (subtotal * discount) / 100;
-    return subtotal - discountAmount;
+  };
+
+  const calculateTotal = () => {
+    const subtotalWithServiceDiscounts = calculateTotalWithServiceDiscounts();
+    const generalDiscountAmount = (subtotalWithServiceDiscounts * discount) / 100;
+    return subtotalWithServiceDiscounts - generalDiscountAmount;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -470,6 +501,87 @@ const OrderManagement = () => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
+  const printOrder = (order: Order) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const orderServices = order.order_services || [];
+    const garmentGroups = orderServices.reduce((groups: any, os) => {
+      const garmentName = os.garment_name || 'Sem nome';
+      if (!groups[garmentName]) {
+        groups[garmentName] = [];
+      }
+      groups[garmentName].push(os);
+      return groups;
+    }, {});
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Pedido - ${order.clients?.name}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 20px; }
+            .order-info { margin-bottom: 30px; }
+            .garment { margin-bottom: 20px; border: 1px solid #ccc; padding: 15px; }
+            .garment-title { font-weight: bold; font-size: 16px; margin-bottom: 10px; }
+            .service { margin-left: 20px; margin-bottom: 10px; }
+            .total-section { margin-top: 30px; border-top: 2px solid #000; padding-top: 20px; text-align: right; }
+            .total-line { margin-bottom: 5px; }
+            .final-total { font-weight: bold; font-size: 18px; }
+            @media print { body { margin: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Pedido de Serviço</h1>
+            <p>Data: ${formatDate(order.created_at)}</p>
+          </div>
+          
+          <div class="order-info">
+            <p><strong>Cliente:</strong> ${order.clients?.name}</p>
+            <p><strong>Telefone:</strong> ${order.clients?.phone}</p>
+            <p><strong>Status:</strong> ${order.payment_status === 'pago' ? 'Pago' : 'Não Pago'}</p>
+          </div>
+          
+          <div class="services">
+            <h3>Serviços:</h3>
+            ${Object.entries(garmentGroups).map(([garmentName, services]: [string, any]) => `
+              <div class="garment">
+                <div class="garment-title">${garmentName}</div>
+                ${services.map((service: any) => `
+                  <div class="service">
+                    • ${service.services.name} - ${formatCurrency(service.services.price)}
+                    ${service.individual_discount > 0 ? ` (Desconto: ${service.individual_discount}% = ${formatCurrency(service.services.price - (service.services.price * service.individual_discount / 100))})` : ''}
+                    ${service.observations ? `<br>&nbsp;&nbsp;<em>Obs: ${service.observations}</em>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            `).join('')}
+          </div>
+          
+          ${order.general_observations ? `
+            <div style="margin-top: 20px;">
+              <p><strong>Observações Gerais:</strong></p>
+              <p>${order.general_observations}</p>
+            </div>
+          ` : ''}
+          
+          <div class="total-section">
+            <div class="total-line">Subtotal: ${formatCurrency(order.total + (order.total * order.discount / (100 - order.discount)))}</div>
+            ${order.discount > 0 ? `<div class="total-line">Desconto Geral: ${order.discount}%</div>` : ''}
+            <div class="final-total">Total: ${formatCurrency(order.total)}</div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
   const getTodaysOrders = () => {
     const today = new Date().toDateString();
     return orders.filter(order => 
@@ -516,22 +628,38 @@ const OrderManagement = () => {
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="clientName">Nome do Cliente</Label>
-                      <Input
-                        id="clientName"
-                        value={clientName}
-                        onChange={(e) => handleClientNameChange(e.target.value)}
-                        placeholder="Digite o nome do cliente..."
-                        required
-                      />
-                      {existingClient && (
-                        <p className="text-sm text-green-600">
-                          Cliente encontrado: {existingClient.name}
-                        </p>
-                      )}
-                    </div>
+                   <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-2 relative">
+                       <Label htmlFor="clientName">Nome do Cliente</Label>
+                       <Input
+                         id="clientName"
+                         value={clientName}
+                         onChange={(e) => handleClientNameChange(e.target.value)}
+                         placeholder="Digite o nome do cliente..."
+                         required
+                         onFocus={() => clientSuggestions.length > 0 && setShowClientSuggestions(true)}
+                         onBlur={() => setTimeout(() => setShowClientSuggestions(false), 200)}
+                       />
+                       {showClientSuggestions && clientSuggestions.length > 0 && (
+                         <div className="absolute top-full left-0 right-0 z-50 bg-background border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                           {clientSuggestions.map((client) => (
+                             <div
+                               key={client.id}
+                               className="p-3 hover:bg-muted cursor-pointer border-b last:border-b-0"
+                               onClick={() => selectClient(client)}
+                             >
+                               <div className="font-medium text-foreground">{client.name}</div>
+                               <div className="text-sm text-muted-foreground">{client.phone}</div>
+                             </div>
+                           ))}
+                         </div>
+                       )}
+                       {existingClient && (
+                         <p className="text-sm text-green-600">
+                           Cliente encontrado: {existingClient.name}
+                         </p>
+                       )}
+                     </div>
                     
                     <div className="space-y-2">
                       <Label htmlFor="clientPhone">Telefone</Label>
@@ -607,25 +735,58 @@ const OrderManagement = () => {
                                 </Button>
                               </div>
                               
-                              <div className="grid grid-cols-3 gap-3">
-                                <div className="space-y-1">
-                                  <Label>Serviço</Label>
-                                  <Select 
-                                    value={service.serviceId} 
-                                    onValueChange={(value) => updateGarmentService(garmentIndex, serviceIndex, "serviceId", value)}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Selecione" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {services.map(s => (
-                                        <SelectItem key={s.id} value={s.id}>
-                                          {s.name} - {formatCurrency(s.price)}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
+                               <div className="grid grid-cols-3 gap-3">
+                                 <div className="space-y-1">
+                                   <Label>Serviço</Label>
+                                   <Popover 
+                                     open={serviceSearchOpen.includes(garmentIndex * 1000 + serviceIndex)} 
+                                     onOpenChange={(open) => {
+                                       const key = garmentIndex * 1000 + serviceIndex;
+                                       if (open) {
+                                         setServiceSearchOpen([...serviceSearchOpen, key]);
+                                       } else {
+                                         setServiceSearchOpen(serviceSearchOpen.filter(k => k !== key));
+                                       }
+                                     }}
+                                   >
+                                     <PopoverTrigger asChild>
+                                       <Button
+                                         variant="outline"
+                                         role="combobox"
+                                         className="justify-between w-full"
+                                       >
+                                         {service.serviceId ? service.serviceName : "Selecione um serviço..."}
+                                         <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                       </Button>
+                                     </PopoverTrigger>
+                                     <PopoverContent className="w-80 p-0">
+                                       <Command>
+                                         <CommandInput placeholder="Buscar serviço..." />
+                                         <CommandList>
+                                           <CommandEmpty>Nenhum serviço encontrado.</CommandEmpty>
+                                           <CommandGroup>
+                                             {services.map((s) => (
+                                               <CommandItem
+                                                 key={s.id}
+                                                 value={s.name}
+                                                 onSelect={() => {
+                                                   updateGarmentService(garmentIndex, serviceIndex, "serviceId", s.id);
+                                                   const key = garmentIndex * 1000 + serviceIndex;
+                                                   setServiceSearchOpen(serviceSearchOpen.filter(k => k !== key));
+                                                 }}
+                                               >
+                                                 <div className="flex justify-between w-full">
+                                                   <span>{s.name}</span>
+                                                   <span className="text-muted-foreground">{formatCurrency(s.price)}</span>
+                                                 </div>
+                                               </CommandItem>
+                                             ))}
+                                           </CommandGroup>
+                                         </CommandList>
+                                       </Command>
+                                     </PopoverContent>
+                                   </Popover>
+                                 </div>
                                 
                                 <div className="space-y-1">
                                   <Label>Preço</Label>
@@ -719,13 +880,36 @@ const OrderManagement = () => {
                     />
                   </div>
 
-                  {garments.length > 0 && (
-                    <div className="p-4 bg-muted rounded-lg">
-                      <div className="text-lg font-bold text-right">
-                        Total do Pedido: {formatCurrency(calculateTotal())}
-                      </div>
-                    </div>
-                  )}
+                   {garments.length > 0 && (
+                     <div className="p-4 bg-muted rounded-lg space-y-2">
+                       <div className="text-right space-y-1">
+                         <div className="flex justify-between items-center">
+                           <span className="text-sm text-muted-foreground">Subtotal Original:</span>
+                           <span className="line-through text-muted-foreground">{formatCurrency(calculateSubtotal())}</span>
+                         </div>
+                         
+                         {calculateSubtotal() !== calculateTotalWithServiceDiscounts() && (
+                           <div className="flex justify-between items-center">
+                             <span className="text-sm text-muted-foreground">Após Descontos dos Serviços:</span>
+                             <span>{formatCurrency(calculateTotalWithServiceDiscounts())}</span>
+                           </div>
+                         )}
+                         
+                         {discount > 0 && (
+                           <div className="flex justify-between items-center">
+                             <span className="text-sm text-muted-foreground">Desconto Geral ({discount}%):</span>
+                             <span className="text-red-600">-{formatCurrency((calculateTotalWithServiceDiscounts() * discount) / 100)}</span>
+                           </div>
+                         )}
+                         
+                         <hr className="my-2" />
+                         <div className="flex justify-between items-center">
+                           <span className="text-lg font-bold">Total Final:</span>
+                           <span className="text-lg font-bold text-primary">{formatCurrency(calculateTotal())}</span>
+                         </div>
+                       </div>
+                     </div>
+                   )}
 
                   <div className="flex justify-end space-x-2">
                     <Button type="button" variant="outline" onClick={resetForm}>
@@ -826,37 +1010,46 @@ const OrderManagement = () => {
                             <TableCell className="font-bold">
                               {formatCurrency(order.total)}
                             </TableCell>
-                            <TableCell>
-                              <div className="flex items-center space-x-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => confirmPayment(order.id, order.payment_status)}
-                                  className="h-8 w-8 p-0 text-green-600 hover:text-green-600"
-                                  title="Confirmar Pagamento"
-                                >
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => editOrder(order)}
-                                  className="h-8 w-8 p-0 text-blue-600 hover:text-blue-600"
-                                  title="Editar"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDelete(order.id)}
-                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                                  title="Excluir"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
+                             <TableCell>
+                               <div className="flex items-center space-x-1">
+                                 <Button
+                                   variant="ghost"
+                                   size="sm"
+                                   onClick={() => confirmPayment(order.id, order.payment_status)}
+                                   className="h-8 w-8 p-0 text-green-600 hover:text-green-600"
+                                   title="Confirmar Pagamento"
+                                 >
+                                   <Check className="h-4 w-4" />
+                                 </Button>
+                                 <Button
+                                   variant="ghost"
+                                   size="sm"
+                                   onClick={() => editOrder(order)}
+                                   className="h-8 w-8 p-0 text-blue-600 hover:text-blue-600"
+                                   title="Editar"
+                                 >
+                                   <Edit className="h-4 w-4" />
+                                 </Button>
+                                 <Button
+                                   variant="ghost"
+                                   size="sm"
+                                   onClick={() => printOrder(order)}
+                                   className="h-8 w-8 p-0 text-purple-600 hover:text-purple-600"
+                                   title="Imprimir Nota"
+                                 >
+                                   <Printer className="h-4 w-4" />
+                                 </Button>
+                                 <Button
+                                   variant="ghost"
+                                   size="sm"
+                                   onClick={() => handleDelete(order.id)}
+                                   className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                   title="Excluir"
+                                 >
+                                   <Trash2 className="h-4 w-4" />
+                                 </Button>
+                               </div>
+                             </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
