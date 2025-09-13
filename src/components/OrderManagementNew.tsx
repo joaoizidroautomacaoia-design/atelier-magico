@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Edit, Trash2, FileText, X, Check, Eye, ChevronDown, Printer } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Plus, Edit, Trash2, FileText, X, Check, Eye, ChevronDown, ChevronUp, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import QRCode from "qrcode";
@@ -85,6 +86,8 @@ const OrderManagement = () => {
   const [clientSuggestions, setClientSuggestions] = useState<Client[]>([]);
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const [serviceSearchOpen, setServiceSearchOpen] = useState<number[]>([]);
+  const [collapsedGarments, setCollapsedGarments] = useState<number[]>([]);
+  const [collapsedServices, setCollapsedServices] = useState<number[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -129,27 +132,24 @@ const OrderManagement = () => {
   };
 
   const formatPhoneNumber = (phone: string) => {
-    // Remove all non-numeric characters
     let cleaned = phone.replace(/\D/g, '');
     
-    // Remove +55 if present at the beginning
     if (cleaned.startsWith('55') && cleaned.length > 11) {
       cleaned = cleaned.substring(2);
     }
     
-    // Format to 11999999999
     return cleaned;
   };
 
   const handleClientNameChange = (name: string) => {
     setClientName(name);
     
-    if (name.length > 1) {
+    if (name.length > 0) {
       const filtered = clients.filter(client => 
         client.name.toLowerCase().includes(name.toLowerCase())
       );
       setClientSuggestions(filtered);
-      setShowClientSuggestions(filtered.length > 0);
+      setShowClientSuggestions(filtered.length > 0 && name.length > 0);
       
       const foundClient = clients.find(client => 
         client.name.toLowerCase() === name.toLowerCase()
@@ -290,7 +290,6 @@ const OrderManagement = () => {
     try {
       let clientId = existingClient?.id;
 
-      // Create client if doesn't exist
       if (!existingClient) {
         const { data: newClient, error: clientError } = await supabase
           .from('clients')
@@ -305,7 +304,6 @@ const OrderManagement = () => {
       const total = calculateTotal();
 
       if (editingOrder) {
-        // Update order
         const { error: orderError } = await supabase
           .from('orders')
           .update({
@@ -319,7 +317,6 @@ const OrderManagement = () => {
 
         if (orderError) throw orderError;
 
-        // Delete existing order services
         const { error: deleteError } = await supabase
           .from('order_services')
           .delete()
@@ -327,7 +324,6 @@ const OrderManagement = () => {
 
         if (deleteError) throw deleteError;
 
-        // Insert new order services
         const orderServices = garments.flatMap(garment =>
           garment.services.map(service => ({
             order_id: editingOrder.id,
@@ -349,7 +345,6 @@ const OrderManagement = () => {
           description: "Pedido editado com sucesso!",
         });
       } else {
-        // Create new order
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .insert([{
@@ -364,7 +359,6 @@ const OrderManagement = () => {
 
         if (orderError) throw orderError;
 
-        // Insert order services
         const orderServices = garments.flatMap(garment =>
           garment.services.map(service => ({
             order_id: orderData.id,
@@ -408,6 +402,8 @@ const OrderManagement = () => {
     setPaymentStatus("não pago");
     setEditingOrder(null);
     setIsDialogOpen(false);
+    setCollapsedGarments([]);
+    setCollapsedServices([]);
   };
 
   const confirmPayment = async (orderId: string, currentStatus: string) => {
@@ -443,7 +439,6 @@ const OrderManagement = () => {
     setGeneralObservations(order.general_observations || "");
     setPaymentStatus(order.payment_status);
     
-    // Reconstruct garments from order_services
     const garmentGroups = order.order_services?.reduce((groups: any, os) => {
       const garmentName = os.garment_name || 'Sem nome';
       if (!groups[garmentName]) {
@@ -503,25 +498,34 @@ const OrderManagement = () => {
   };
 
   const generatePixQRCode = async (value: number): Promise<string> => {
-    // Gerar o código Pix no formato oficial BR Code
     const pixKey = "42346335851";
+    const merchantName = "COMERCIANTE";
+    const merchantCity = "SAO PAULO";
     const amount = value.toFixed(2);
     
-    // Formato do código Pix (BR Code)
-    const payload = [
-      "000201", // Payload Format Indicator
-      "010212", // Point of Initiation Method
-      "26580014BR.GOV.BCB.PIX01" + String(pixKey.length).padStart(2, '0') + pixKey, // Merchant Account Information
-      "5204" + "0000", // Merchant Category Code
-      "5303986", // Transaction Currency (986 = BRL)
-      "54" + String(amount.length).padStart(2, '0') + amount, // Transaction Amount
-      "5802BR", // Country Code
-      "590" + String("Pagamento".length).padStart(2, '0') + "Pagamento", // Merchant Name
-      "6008BRASILIA", // Merchant City
-      "62070503***", // Additional Data Field Template
-    ].join("");
+    const formatField = (id: string, value: string) => {
+      const length = value.length.toString().padStart(2, '0');
+      return id + length + value;
+    };
     
-    // Calcular CRC16
+    let payload = "";
+    payload += formatField("00", "01");
+    payload += formatField("01", "12");
+    
+    let pixInfo = "";
+    pixInfo += formatField("00", "BR.GOV.BCB.PIX");
+    pixInfo += formatField("01", pixKey);
+    payload += formatField("26", pixInfo);
+    
+    payload += formatField("52", "0000");
+    payload += formatField("53", "986");
+    payload += formatField("54", amount);
+    payload += formatField("58", "BR");
+    payload += formatField("59", merchantName);
+    payload += formatField("60", merchantCity);
+    
+    payload += "6304";
+    
     const crc16 = (data: string): string => {
       let crc = 0xFFFF;
       const polynomial = 0x1021;
@@ -541,7 +545,7 @@ const OrderManagement = () => {
       return crc.toString(16).toUpperCase().padStart(4, '0');
     };
     
-    const finalPayload = payload + "6304" + crc16(payload + "6304");
+    const finalPayload = payload + crc16(payload);
     
     try {
       const qrCodeDataURL = await QRCode.toDataURL(finalPayload, {
@@ -550,7 +554,8 @@ const OrderManagement = () => {
         color: {
           dark: '#000000',
           light: '#FFFFFF'
-        }
+        },
+        errorCorrectionLevel: 'M'
       });
       return qrCodeDataURL;
     } catch (error) {
@@ -573,7 +578,6 @@ const OrderManagement = () => {
       return groups;
     }, {});
 
-    // Gerar QR Code Pix
     const qrCodeImage = await generatePixQRCode(order.total);
 
     const printContent = `
@@ -708,42 +712,32 @@ const OrderManagement = () => {
                    <div className="grid grid-cols-2 gap-4">
                      <div className="space-y-2 relative">
                        <Label htmlFor="clientName">Nome do Cliente</Label>
-                       <Popover open={showClientSuggestions} onOpenChange={setShowClientSuggestions}>
-                         <PopoverTrigger asChild>
-                           <div className="relative">
-                             <Input
-                               id="clientName"
-                               value={clientName}
-                               onChange={(e) => handleClientNameChange(e.target.value)}
-                               placeholder="Digite para buscar cliente..."
-                               required
-                               onFocus={() => clientSuggestions.length > 0 && setShowClientSuggestions(true)}
-                             />
-                           </div>
-                         </PopoverTrigger>
-                         <PopoverContent className="w-80 p-0" align="start">
-                           <Command>
-                             <CommandInput placeholder="Buscar cliente..." value={clientName} onValueChange={handleClientNameChange} />
-                             <CommandList>
-                               <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
-                               <CommandGroup>
-                                 {clientSuggestions.map((client) => (
-                                   <CommandItem
-                                     key={client.id}
-                                     value={client.name}
-                                     onSelect={() => selectClient(client)}
-                                   >
-                                     <div className="flex flex-col w-full">
-                                       <span className="font-medium">{client.name}</span>
-                                       <span className="text-sm text-muted-foreground">{client.phone}</span>
-                                     </div>
-                                   </CommandItem>
-                                 ))}
-                               </CommandGroup>
-                             </CommandList>
-                           </Command>
-                         </PopoverContent>
-                       </Popover>
+                       <Command>
+                         <CommandInput
+                           placeholder="Digite para buscar cliente..."
+                           value={clientName}
+                           onValueChange={handleClientNameChange}
+                         />
+                         {clientSuggestions.length > 0 && (
+                           <CommandList className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+                             <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                             <CommandGroup>
+                               {clientSuggestions.map((client) => (
+                                 <CommandItem
+                                   key={client.id}
+                                   value={client.name}
+                                   onSelect={() => selectClient(client)}
+                                 >
+                                   <div className="flex flex-col w-full">
+                                     <span className="font-medium">{client.name}</span>
+                                     <span className="text-sm text-muted-foreground">{client.phone}</span>
+                                   </div>
+                                 </CommandItem>
+                               ))}
+                             </CommandGroup>
+                           </CommandList>
+                         )}
+                       </Command>
                        {existingClient && (
                          <p className="text-sm text-green-600">
                            Cliente encontrado: {existingClient.name}
@@ -774,17 +768,36 @@ const OrderManagement = () => {
                     </div>
                     
                     {garments.map((garment, garmentIndex) => (
-                      <div key={garmentIndex} className="p-4 border rounded-lg space-y-4">
+                      <Collapsible
+                        key={garmentIndex}
+                        open={!collapsedGarments.includes(garmentIndex)}
+                        onOpenChange={(open) => {
+                          if (open) {
+                            setCollapsedGarments(collapsedGarments.filter(i => i !== garmentIndex));
+                          } else {
+                            setCollapsedGarments([...collapsedGarments, garmentIndex]);
+                          }
+                        }}
+                        className="p-4 border rounded-lg space-y-4"
+                      >
                         <div className="flex items-center justify-between">
-                          <div className="flex-1 mr-4">
-                            <Label>Nome da Peça</Label>
-                            <Input
-                              value={garment.name}
-                              onChange={(e) => updateGarmentName(garmentIndex, e.target.value)}
-                              placeholder="Ex: Calça azul, Vestido longo..."
-                              required
-                            />
-                          </div>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" className="flex items-center gap-2 p-0 h-auto font-medium">
+                              {collapsedGarments.includes(garmentIndex) ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronUp className="h-4 w-4" />
+                              )}
+                              <span>
+                                {garment.name || `Peça ${garmentIndex + 1}`}
+                                {collapsedGarments.includes(garmentIndex) && garment.services.length > 0 && (
+                                  <span className="text-sm text-muted-foreground ml-2">
+                                    - {garment.services.map(s => s.serviceName).join(', ')}
+                                  </span>
+                                )}
+                              </span>
+                            </Button>
+                          </CollapsibleTrigger>
                           <Button
                             type="button"
                             variant="ghost"
@@ -795,6 +808,17 @@ const OrderManagement = () => {
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
+
+                        <CollapsibleContent className="space-y-4">
+                          <div>
+                            <Label>Nome da Peça</Label>
+                            <Input
+                              value={garment.name}
+                              onChange={(e) => updateGarmentName(garmentIndex, e.target.value)}
+                              placeholder="Ex: Calça azul, Vestido longo..."
+                              required
+                            />
+                          </div>
 
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
@@ -810,21 +834,54 @@ const OrderManagement = () => {
                             </Button>
                           </div>
 
-                          {garment.services.map((service, serviceIndex) => (
-                            <div key={serviceIndex} className="p-3 bg-muted rounded-lg space-y-3">
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium">Serviço {serviceIndex + 1}</span>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeServiceFromGarment(garmentIndex, serviceIndex)}
-                                  className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </div>
-                              
+                          {garment.services.map((service, serviceIndex) => {
+                            const serviceKey = garmentIndex * 1000 + serviceIndex;
+                            const isServiceCollapsed = collapsedServices.includes(serviceKey);
+                            
+                            return (
+                              <Collapsible
+                                key={serviceIndex}
+                                open={!isServiceCollapsed}
+                                onOpenChange={(open) => {
+                                  if (open) {
+                                    setCollapsedServices(collapsedServices.filter(i => i !== serviceKey));
+                                  } else {
+                                    setCollapsedServices([...collapsedServices, serviceKey]);
+                                  }
+                                }}
+                                className="p-3 bg-muted rounded-lg space-y-3"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <CollapsibleTrigger asChild>
+                                    <Button variant="ghost" className="flex items-center gap-2 p-0 h-auto font-medium">
+                                      {isServiceCollapsed ? (
+                                        <ChevronDown className="h-4 w-4" />
+                                      ) : (
+                                        <ChevronUp className="h-4 w-4" />
+                                      )}
+                                      <span>
+                                        {service.serviceName || `Serviço ${serviceIndex + 1}`}
+                                        {isServiceCollapsed && service.serviceName && (
+                                          <span className="text-sm text-muted-foreground ml-2">
+                                            - {formatCurrency(service.price)}
+                                          </span>
+                                        )}
+                                      </span>
+                                    </Button>
+                                  </CollapsibleTrigger>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeServiceFromGarment(garmentIndex, serviceIndex)}
+                                    className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+
+                                <CollapsibleContent className="space-y-3">
+                               
                                <div className="grid grid-cols-3 gap-3">
                                  <div className="space-y-1">
                                    <Label>Serviço</Label>
@@ -877,136 +934,113 @@ const OrderManagement = () => {
                                      </PopoverContent>
                                    </Popover>
                                  </div>
-                                
-                                <div className="space-y-1">
-                                  <Label>Preço</Label>
-                                  <Input
-                                    value={formatCurrency(service.price)}
-                                    disabled
-                                    className="bg-background"
-                                  />
-                                </div>
-
-                                <div className="space-y-1">
-                                  <Label>Desconto (%)</Label>
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    step="0.01"
-                                    value={service.individualDiscount}
-                                    onChange={(e) => updateGarmentService(garmentIndex, serviceIndex, "individualDiscount", parseFloat(e.target.value) || 0)}
-                                    placeholder="0"
-                                  />
-                                </div>
-                              </div>
-                              
-                              <div className="space-y-1">
-                                <Label>Observações</Label>
-                                <Textarea
-                                  value={service.observation}
-                                  onChange={(e) => updateGarmentService(garmentIndex, serviceIndex, "observation", e.target.value)}
-                                  placeholder="Observações específicas..."
-                                  rows={2}
-                                />
-                              </div>
-
-                              {service.serviceId && (
-                                <div className="text-sm font-medium text-right">
-                                  Total: {formatCurrency(calculateServiceTotal(service))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                                 <div className="space-y-1">
+                                   <Label>Preço</Label>
+                                   <Input
+                                     value={formatCurrency(service.price)}
+                                     disabled
+                                     className="bg-muted"
+                                   />
+                                 </div>
+                                 <div className="space-y-1">
+                                   <Label>Desconto Individual (%)</Label>
+                                   <Input
+                                     type="number"
+                                     value={service.individualDiscount || ""}
+                                     onChange={(e) => updateGarmentService(garmentIndex, serviceIndex, "individualDiscount", parseFloat(e.target.value) || 0)}
+                                     placeholder="Digite o desconto"
+                                     min="0"
+                                     max="100"
+                                   />
+                                 </div>
+                               </div>
+                               
+                               <div className="space-y-1">
+                                 <Label>Observações do Serviço</Label>
+                                 <Textarea
+                                   value={service.observation}
+                                   onChange={(e) => updateGarmentService(garmentIndex, serviceIndex, "observation", e.target.value)}
+                                   placeholder="Observações específicas deste serviço..."
+                                   rows={2}
+                                 />
+                               </div>
+                                </CollapsibleContent>
+                              </Collapsible>
+                            );
+                          })}
                         </div>
-                      </div>
+                        </CollapsibleContent>
+                      </Collapsible>
                     ))}
-                    
-                    {garments.length === 0 && (
-                      <div className="text-center py-4 text-muted-foreground">
-                        <p>Nenhuma peça adicionada</p>
-                        <p className="text-sm">Clique em "Adicionar Peça" para começar</p>
-                      </div>
-                    )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="discount">Desconto Geral (%)</Label>
-                      <Input
-                        id="discount"
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={discount}
-                        onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                        placeholder="0"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="paymentStatus">Status de Pagamento</Label>
-                      <Select value={paymentStatus} onValueChange={setPaymentStatus}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pago">Pago</SelectItem>
-                          <SelectItem value="não pago">Não pago</SelectItem>
-                        </SelectContent>
-                      </Select>
+                  <div className="space-y-2">
+                    <Label htmlFor="discount">Desconto Geral (%)</Label>
+                    <Input
+                      id="discount"
+                      type="number"
+                      value={discount || ""}
+                      onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                      placeholder="Digite o desconto geral"
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="total">Total do Pedido</Label>
+                    <div className="p-3 bg-muted rounded-lg">
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Valor original:</span>
+                          <span className="line-through text-sm">{formatCurrency(calculateSubtotal())}</span>
+                        </div>
+                        {(discount > 0 || garments.some(g => g.services.some(s => s.individualDiscount > 0))) && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Desconto aplicado:</span>
+                            <span className="text-sm text-green-600">
+                              -{formatCurrency(calculateSubtotal() - calculateTotal())}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center border-t pt-1">
+                          <span className="font-semibold">Total final:</span>
+                          <span className="font-semibold text-lg">{formatCurrency(calculateTotal())}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="observations">Observações Gerais</Label>
+                    <Label htmlFor="paymentStatus">Status de Pagamento</Label>
+                    <Select value={paymentStatus} onValueChange={setPaymentStatus}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="não pago">Não Pago</SelectItem>
+                        <SelectItem value="pago">Pago</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="generalObservations">Observações Gerais</Label>
                     <Textarea
-                      id="observations"
+                      id="generalObservations"
                       value={generalObservations}
                       onChange={(e) => setGeneralObservations(e.target.value)}
-                      placeholder="Observações gerais sobre o pedido..."
+                      placeholder="Observações gerais do pedido..."
                       rows={3}
                     />
                   </div>
 
-                   {garments.length > 0 && (
-                     <div className="p-4 bg-muted rounded-lg space-y-2">
-                       <div className="text-right space-y-1">
-                         <div className="flex justify-between items-center">
-                           <span className="text-sm text-muted-foreground">Subtotal Original:</span>
-                           <span className="line-through text-muted-foreground">{formatCurrency(calculateSubtotal())}</span>
-                         </div>
-                         
-                         {calculateSubtotal() !== calculateTotalWithServiceDiscounts() && (
-                           <div className="flex justify-between items-center">
-                             <span className="text-sm text-muted-foreground">Após Descontos dos Serviços:</span>
-                             <span>{formatCurrency(calculateTotalWithServiceDiscounts())}</span>
-                           </div>
-                         )}
-                         
-                         {discount > 0 && (
-                           <div className="flex justify-between items-center">
-                             <span className="text-sm text-muted-foreground">Desconto Geral ({discount}%):</span>
-                             <span className="text-red-600">-{formatCurrency((calculateTotalWithServiceDiscounts() * discount) / 100)}</span>
-                           </div>
-                         )}
-                         
-                         <hr className="my-2" />
-                         <div className="flex justify-between items-center">
-                           <span className="text-lg font-bold">Total Final:</span>
-                           <span className="text-lg font-bold text-primary">{formatCurrency(calculateTotal())}</span>
-                         </div>
-                       </div>
-                     </div>
-                   )}
-
-                  <div className="flex justify-end space-x-2">
+                  <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={resetForm}>
                       Cancelar
                     </Button>
-                    <Button type="submit" className="bg-gradient-primary hover:opacity-90">
-                      Salvar Pedido
+                    <Button type="submit">
+                      {editingOrder ? 'Salvar Alterações' : 'Cadastrar Pedido'}
                     </Button>
                   </div>
                 </form>
@@ -1016,201 +1050,196 @@ const OrderManagement = () => {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>Carregando pedidos...</p>
-            </div>
-          ) : todaysOrders.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">Nenhum pedido hoje</p>
-              <p className="text-sm">Os pedidos de hoje aparecerão aqui</p>
-            </div>
+            <div className="text-center">Carregando...</div>
           ) : (
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'pagos' | 'nao-pagos')}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="nao-pagos">Não Pagos ({todaysOrders.filter(o => o.payment_status === 'não pago').length})</TabsTrigger>
-                <TabsTrigger value="pagos">Pagos ({todaysOrders.filter(o => o.payment_status === 'pago').length})</TabsTrigger>
-              </TabsList>
+            <>
+              <div className="mb-4">
+                <p className="text-sm text-muted-foreground">
+                  Total de pedidos hoje: {todaysOrders.length}
+                </p>
+              </div>
               
-              <TabsContent value={activeTab} className="mt-4">
-                {filteredOrders.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>Nenhum pedido {activeTab === 'pagos' ? 'pago' : 'não pago'} hoje</p>
-                  </div>
-                ) : (
-                  <div className="rounded-lg border">
+              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'pagos' | 'nao-pagos')}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="nao-pagos">
+                    Não Pagos ({todaysOrders.filter(o => o.payment_status === 'não pago').length})
+                  </TabsTrigger>
+                  <TabsTrigger value="pagos">
+                    Pagos ({todaysOrders.filter(o => o.payment_status === 'pago').length})
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="nao-pagos" className="mt-4">
+                  <div className="rounded-md border">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Cliente</TableHead>
                           <TableHead>Telefone</TableHead>
-                          <TableHead>Serviços</TableHead>
-                          <TableHead>Observações</TableHead>
                           <TableHead>Total</TableHead>
-                          <TableHead className="w-[150px]">Ações</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Ações</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredOrders.map((order) => (
-                          <TableRow key={order.id} className="hover:bg-muted/50 transition-smooth">
+                        {filteredOrders.filter(order => order.payment_status === 'não pago').map((order) => (
+                          <TableRow key={order.id}>
                             <TableCell className="font-medium">{order.clients?.name}</TableCell>
                             <TableCell>{order.clients?.phone}</TableCell>
+                            <TableCell>{formatCurrency(order.total)}</TableCell>
+                            <TableCell>{formatDate(order.created_at)}</TableCell>
                             <TableCell>
-                              <div className="space-y-1">
-                                {order.order_services?.reduce((groups: any, os) => {
-                                  const garmentName = os.garment_name || 'Sem nome';
-                                  if (!groups[garmentName]) {
-                                    groups[garmentName] = [];
-                                  }
-                                  groups[garmentName].push(os);
-                                  return groups;
-                                }, {}) && Object.entries(
-                                  order.order_services?.reduce((groups: any, os) => {
-                                    const garmentName = os.garment_name || 'Sem nome';
-                                    if (!groups[garmentName]) {
-                                      groups[garmentName] = [];
-                                    }
-                                    groups[garmentName].push(os);
-                                    return groups;
-                                  }, {}) || {}
-                                ).map(([garmentName, services]: [string, any]) => (
-                                  <div key={garmentName} className="text-sm">
-                                    <strong>{garmentName}:</strong>
-                                    <div className="ml-2">
-                                      {services.map((os: any) => (
-                                        <div key={os.id}>• {os.services.name}</div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => confirmPayment(order.id, order.payment_status)}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  <Check className="h-4 w-4 mr-1" />
+                                  Confirmar
+                                </Button>
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button size="sm" variant="outline">
+                                      <Eye className="h-4 w-4 mr-1" />
+                                      Obs
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>Observações do Pedido</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4">
+                                      {order.order_services?.map((os, index) => (
+                                        <div key={index} className="border-b pb-3">
+                                          <h4 className="font-semibold">{os.garment_name} - {os.services.name}</h4>
+                                          {os.observations && (
+                                            <p className="text-sm text-muted-foreground mt-1">{os.observations}</p>
+                                          )}
+                                        </div>
                                       ))}
+                                      {order.general_observations && (
+                                        <div>
+                                          <h4 className="font-semibold">Observações Gerais:</h4>
+                                          <p className="text-sm text-muted-foreground mt-1">{order.general_observations}</p>
+                                        </div>
+                                      )}
                                     </div>
-                                  </div>
-                                ))}
+                                  </DialogContent>
+                                </Dialog>
+                                <Button size="sm" variant="outline" onClick={() => editOrder(order)}>
+                                  <Edit className="h-4 w-4 mr-1" />
+                                  Editar
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => printOrder(order)}>
+                                  <Printer className="h-4 w-4 mr-1" />
+                                  Imprimir
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="destructive" 
+                                  onClick={() => handleDelete(order.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  Excluir
+                                </Button>
                               </div>
                             </TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setObservationsDialog(order)}
-                                className="h-8 px-2 text-blue-600 hover:text-blue-600"
-                                title="Ver Observações"
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                                Ver
-                              </Button>
-                            </TableCell>
-                            <TableCell className="font-bold">
-                              {formatCurrency(order.total)}
-                            </TableCell>
-                             <TableCell>
-                               <div className="flex items-center space-x-1">
-                                 <Button
-                                   variant="ghost"
-                                   size="sm"
-                                   onClick={() => confirmPayment(order.id, order.payment_status)}
-                                   className="h-8 w-8 p-0 text-green-600 hover:text-green-600"
-                                   title="Confirmar Pagamento"
-                                 >
-                                   <Check className="h-4 w-4" />
-                                 </Button>
-                                 <Button
-                                   variant="ghost"
-                                   size="sm"
-                                   onClick={() => editOrder(order)}
-                                   className="h-8 w-8 p-0 text-blue-600 hover:text-blue-600"
-                                   title="Editar"
-                                 >
-                                   <Edit className="h-4 w-4" />
-                                 </Button>
-                                 <Button
-                                   variant="ghost"
-                                   size="sm"
-                                   onClick={() => printOrder(order)}
-                                   className="h-8 w-8 p-0 text-purple-600 hover:text-purple-600"
-                                   title="Imprimir Nota"
-                                 >
-                                   <Printer className="h-4 w-4" />
-                                 </Button>
-                                 <Button
-                                   variant="ghost"
-                                   size="sm"
-                                   onClick={() => handleDelete(order.id)}
-                                   className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                                   title="Excluir"
-                                 >
-                                   <Trash2 className="h-4 w-4" />
-                                 </Button>
-                               </div>
-                             </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
                   </div>
-                )}
-              </TabsContent>
-            </Tabs>
+                </TabsContent>
+                
+                <TabsContent value="pagos" className="mt-4">
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Telefone</TableHead>
+                          <TableHead>Total</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredOrders.filter(order => order.payment_status === 'pago').map((order) => (
+                          <TableRow key={order.id}>
+                            <TableCell className="font-medium">{order.clients?.name}</TableCell>
+                            <TableCell>{order.clients?.phone}</TableCell>
+                            <TableCell>{formatCurrency(order.total)}</TableCell>
+                            <TableCell>{formatDate(order.created_at)}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => confirmPayment(order.id, order.payment_status)}
+                                  className="border-orange-500 text-orange-600 hover:bg-orange-50"
+                                >
+                                  <X className="h-4 w-4 mr-1" />
+                                  Não Pago
+                                </Button>
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button size="sm" variant="outline">
+                                      <Eye className="h-4 w-4 mr-1" />
+                                      Obs
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>Observações do Pedido</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4">
+                                      {order.order_services?.map((os, index) => (
+                                        <div key={index} className="border-b pb-3">
+                                          <h4 className="font-semibold">{os.garment_name} - {os.services.name}</h4>
+                                          {os.observations && (
+                                            <p className="text-sm text-muted-foreground mt-1">{os.observations}</p>
+                                          )}
+                                        </div>
+                                      ))}
+                                      {order.general_observations && (
+                                        <div>
+                                          <h4 className="font-semibold">Observações Gerais:</h4>
+                                          <p className="text-sm text-muted-foreground mt-1">{order.general_observations}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+                                <Button size="sm" variant="outline" onClick={() => editOrder(order)}>
+                                  <Edit className="h-4 w-4 mr-1" />
+                                  Editar
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => printOrder(order)}>
+                                  <Printer className="h-4 w-4 mr-1" />
+                                  Imprimir
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="destructive" 
+                                  onClick={() => handleDelete(order.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  Excluir
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </>
           )}
         </CardContent>
       </Card>
-
-      {/* Dialog de Observações */}
-      <Dialog open={!!observationsDialog} onOpenChange={() => setObservationsDialog(null)}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Observações do Pedido</DialogTitle>
-            <DialogDescription>
-              Cliente: {observationsDialog?.clients?.name}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {observationsDialog?.general_observations && (
-              <div>
-                <h4 className="font-medium text-sm mb-2">Observações Gerais:</h4>
-                <p className="text-sm bg-muted p-3 rounded-lg">
-                  {observationsDialog.general_observations}
-                </p>
-              </div>
-            )}
-            
-            <div>
-              <h4 className="font-medium text-sm mb-2">Observações por Serviço:</h4>
-              <div className="space-y-3">
-                {observationsDialog?.order_services?.reduce((groups: any, os) => {
-                  const garmentName = os.garment_name || 'Sem nome';
-                  if (!groups[garmentName]) {
-                    groups[garmentName] = [];
-                  }
-                  groups[garmentName].push(os);
-                  return groups;
-                }, {}) && Object.entries(
-                  observationsDialog?.order_services?.reduce((groups: any, os) => {
-                    const garmentName = os.garment_name || 'Sem nome';
-                    if (!groups[garmentName]) {
-                      groups[garmentName] = [];
-                    }
-                    groups[garmentName].push(os);
-                    return groups;
-                  }, {}) || {}
-                ).map(([garmentName, services]: [string, any]) => (
-                  <div key={garmentName} className="border rounded-lg p-3">
-                    <h5 className="font-medium text-sm mb-2">{garmentName}:</h5>
-                    <div className="space-y-2">
-                      {services.map((os: any) => (
-                        <div key={os.id} className="text-sm">
-                          <strong>• {os.services.name}:</strong>
-                          <p className="ml-4 text-muted-foreground">
-                            {os.observations || "Sem observações"}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
