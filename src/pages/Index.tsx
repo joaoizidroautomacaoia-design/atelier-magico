@@ -1,13 +1,18 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Scissors, FileText, Plus } from "lucide-react";
+import { Users, Scissors, FileText, Plus, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import Dashboard from "@/components/Dashboard";
 import ClientManagement from "@/components/ClientManagement";
 import ServiceManagement from "@/components/ServiceManagement";
 import OrderManagement from "@/components/OrderManagementNew";
 
 const Index = () => {
+  const { user, signOut, loading } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'services' | 'orders'>('dashboard');
   const [stats, setStats] = useState([
     { title: "Clientes", value: "0", icon: Users, color: "bg-gradient-primary" },
@@ -16,6 +21,14 @@ const Index = () => {
   ]);
 
   useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+    
     const fetchStats = async () => {
       try {
         const [clientsData, servicesData, ordersData] = await Promise.all([
@@ -35,7 +48,19 @@ const Index = () => {
     };
 
     fetchStats();
-  }, []);
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-accent flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-accent">
@@ -50,36 +75,54 @@ const Index = () => {
                 Sistema de gestão para seu ateliê de costura
               </p>
             </div>
-            <nav className="flex space-x-2">
-              <Button
-                variant={activeTab === 'dashboard' ? 'default' : 'outline'}
-                onClick={() => setActiveTab('dashboard')}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <img 
+                  src={user.user_metadata?.avatar_url} 
+                  alt="Avatar" 
+                  className="w-8 h-8 rounded-full"
+                />
+                <span className="text-sm font-medium">{user.user_metadata?.full_name}</span>
+              </div>
+              <nav className="flex space-x-2">
+                <Button
+                  variant={activeTab === 'dashboard' ? 'default' : 'outline'}
+                  onClick={() => setActiveTab('dashboard')}
+                  className="transition-smooth"
+                >
+                  Dashboard
+                </Button>
+                <Button
+                  variant={activeTab === 'clients' ? 'default' : 'outline'}
+                  onClick={() => setActiveTab('clients')}
+                  className="transition-smooth"
+                >
+                  Clientes
+                </Button>
+                <Button
+                  variant={activeTab === 'services' ? 'default' : 'outline'}
+                  onClick={() => setActiveTab('services')}
+                  className="transition-smooth"
+                >
+                  Serviços
+                </Button>
+                <Button
+                  variant={activeTab === 'orders' ? 'default' : 'outline'}
+                  onClick={() => setActiveTab('orders')}
+                  className="transition-smooth"
+                >
+                  Pedidos
+                </Button>
+              </nav>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={signOut}
                 className="transition-smooth"
               >
-                Dashboard
+                <LogOut className="w-4 h-4" />
               </Button>
-              <Button
-                variant={activeTab === 'clients' ? 'default' : 'outline'}
-                onClick={() => setActiveTab('clients')}
-                className="transition-smooth"
-              >
-                Clientes
-              </Button>
-              <Button
-                variant={activeTab === 'services' ? 'default' : 'outline'}
-                onClick={() => setActiveTab('services')}
-                className="transition-smooth"
-              >
-                Serviços
-              </Button>
-              <Button
-                variant={activeTab === 'orders' ? 'default' : 'outline'}
-                onClick={() => setActiveTab('orders')}
-                className="transition-smooth"
-              >
-                Pedidos
-              </Button>
-            </nav>
+            </div>
           </div>
         </div>
       </header>
@@ -87,27 +130,7 @@ const Index = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'dashboard' && (
           <div className="animate-fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              {stats.map((stat, index) => (
-                <Card key={stat.title} className="shadow-card hover:shadow-elegant transition-smooth">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      {stat.title}
-                    </CardTitle>
-                    <div className={`${stat.color} p-2 rounded-lg`}>
-                      <stat.icon className="h-4 w-4 text-white" />
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{stat.value}</div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-1 gap-6">
-              <OrderManagement />
-            </div>
+            <Dashboard />
           </div>
         )}
 
