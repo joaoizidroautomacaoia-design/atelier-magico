@@ -168,6 +168,7 @@ const OrderManagement = () => {
         });
       } else {
         // Create new order
+        const { data: { user } } = await supabase.auth.getUser();
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .insert([{
@@ -175,6 +176,7 @@ const OrderManagement = () => {
             discount: formData.discount,
             total,
             general_observations: formData.generalObservations,
+            user_id: user?.id,
           }])
           .select()
           .single();

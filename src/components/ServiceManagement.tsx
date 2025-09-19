@@ -85,9 +85,10 @@ const ServiceManagement = () => {
           description: "Serviço editado com sucesso!",
         });
       } else {
+        const { data: { user } } = await supabase.auth.getUser();
         const { error } = await supabase
           .from('services')
-          .insert([{ name: formData.name, price }]);
+          .insert([{ name: formData.name, price, user_id: user?.id }]);
 
         if (error) throw error;
 

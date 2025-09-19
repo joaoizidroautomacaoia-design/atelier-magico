@@ -317,9 +317,10 @@ const OrderManagement = () => {
       let clientId = existingClient?.id;
 
       if (!existingClient) {
+        const { data: { user } } = await supabase.auth.getUser();
         const { data: newClient, error: clientError } = await supabase
           .from('clients')
-          .insert([{ name: clientName, phone: clientPhone }])
+          .insert([{ name: clientName, phone: clientPhone, user_id: user?.id }])
           .select()
           .single();
 
@@ -371,6 +372,7 @@ const OrderManagement = () => {
           description: "Pedido editado com sucesso!",
         });
       } else {
+        const { data: { user } } = await supabase.auth.getUser();
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .insert([{
@@ -379,6 +381,7 @@ const OrderManagement = () => {
             total,
             general_observations: generalObservations,
             payment_status: paymentStatus,
+            user_id: user?.id,
           }])
           .select()
           .single();

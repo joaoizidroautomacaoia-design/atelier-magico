@@ -75,9 +75,10 @@ const ClientManagement = () => {
           description: "Cliente editado com sucesso!",
         });
       } else {
+        const { data: { user } } = await supabase.auth.getUser();
         const { error } = await supabase
           .from('clients')
-          .insert([{ name: formData.name, phone: formData.phone }]);
+          .insert([{ name: formData.name, phone: formData.phone, user_id: user?.id }]);
 
         if (error) throw error;
 

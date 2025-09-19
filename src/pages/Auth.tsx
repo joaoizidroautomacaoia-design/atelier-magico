@@ -30,7 +30,7 @@ const Auth = () => {
           <div className="mx-auto w-12 h-12 bg-gradient-primary rounded-lg flex items-center justify-center mb-4">
             <Scissors className="w-6 h-6 text-white" />
           </div>
-          <CardTitle className="text-2xl font-bold">Ateliê Manager</CardTitle>
+          <CardTitle className="text-2xl font-bold">Ateliê Celia Severo</CardTitle>
           <CardDescription>
             Entre com sua conta Google para acessar o sistema de gestão
           </CardDescription>
