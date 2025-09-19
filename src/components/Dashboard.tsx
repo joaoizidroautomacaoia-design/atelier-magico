@@ -205,10 +205,10 @@ const Dashboard = () => {
           <h2 className="text-2xl font-bold">Dashboard</h2>
           <p className="text-muted-foreground">Visão geral do seu ateliê</p>
         </div>
-        <Button className="bg-gradient-primary">
+        {/*<Button className="bg-gradient-primary">
           <Plus className="w-4 h-4 mr-2" />
           Novo Pedido
-        </Button>
+        </Button>*/}
       </div>
 
       {/* Top Stats Cards */}
