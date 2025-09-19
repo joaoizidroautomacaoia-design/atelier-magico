@@ -665,10 +665,27 @@ const OrderManagement = () => {
           ` : ''}
           
           <div class="total-section">
-            <div class="total-line">Subtotal: ${formatCurrency(order.total + (order.total * order.discount / (100 - order.discount)))}</div>
-            ${order.discount > 0 ? `<div class="total-line">Desconto Geral: ${order.discount}%</div>` : ''}
-            <div class="final-total">Total: ${formatCurrency(order.total)}</div>
+            <!-- Subtotal (valor antes do desconto) -->
+            <div class="total-line">
+              Subtotal: ${formatCurrency(order.total / (1 - order.discount / 100))}
+            </div>
+          
+            <!-- Linha de desconto em R$ -->
+            ${order.discount > 0 
+              ? `<div class="total-line">Desconto: ${formatCurrency((order.total / (1 - order.discount / 100)) - order.total)}</div>` 
+              : ''}
+          
+            <!-- Linha de desconto em % -->
+            ${order.discount > 0 
+              ? `<div class="total-line">Desconto Geral: ${order.discount}%</div>` 
+              : ''}
+          
+            <!-- Total final -->
+            <div class="final-total">
+              Total: ${formatCurrency(order.total)}
+            </div>
           </div>
+
           
           <div class="pix-section">
             <h3>Pagamento via Pix</h3>
