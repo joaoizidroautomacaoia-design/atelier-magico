@@ -672,7 +672,7 @@ const OrderManagement = () => {
           
           <div class="pix-section">
             <h3>Pagamento via Pix</h3>
-            <p><strong>Chave Pix:</strong> 42346335851</p>
+            <p><strong>Chave Pix:</strong> 14997232910</p>
             <p><strong>Valor:</strong> ${formatCurrency(order.total)}</p>
             ${qrCodeImage ? `
               <div class="qr-code">
