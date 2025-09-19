@@ -527,7 +527,7 @@ const OrderManagement = () => {
   };
 
   const generatePixQRCode = async (value: number): Promise<string> => {
-    const pixKey = "42346335851";
+    const pixKey = "14997232910";
     const merchantName = "COMERCIANTE";
     const merchantCity = "SAO PAULO";
     const amount = value.toFixed(2);
