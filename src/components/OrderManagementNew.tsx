@@ -633,6 +633,7 @@ const OrderManagement = () => {
         <body>
           <div class="header">
             <h1>Pedido de Serviço - Ateliê Célia Severo</h1>
+            <p>Rua Eduardo Carlos Pereira, 267 - Vila Mano</p>
             <p>Data: ${formatDate(order.created_at)}</p>
           </div>
           
@@ -669,17 +670,6 @@ const OrderManagement = () => {
             <div class="total-line">
               Subtotal: ${formatCurrency(order.total / (1 - order.discount / 100))}
             </div>
-          
-            <!-- Linha de desconto em R$ -->
-            ${order.discount > 0 
-              ? `<div class="total-line">Desconto: ${formatCurrency((order.total / (1 - order.discount / 100)) - order.total)}</div>` 
-              : ''}
-          
-            <!-- Linha de desconto em % -->
-            ${order.discount > 0 
-              ? `<div class="total-line">Desconto Geral: ${order.discount}%</div>` 
-              : ''}
-          
             <!-- Total final -->
             <div class="final-total">
               Total: ${formatCurrency(order.total)}
@@ -695,9 +685,10 @@ const OrderManagement = () => {
               <div class="qr-code">
                 <img src="${qrCodeImage}" alt="QR Code Pix" style="width: 200px; height: 200px;" />
               </div>
-              <p style="font-size: 12px; color: #666;">
+              <p style="font-size: 12px; color: #000000ff;">
                 Escaneie o QR Code com seu aplicativo bancário para efetuar o pagamento
               </p>
+              <p style="font-size: 20px; color: #000; text-decoration: underline;">CUPOM SEM VALOR FISCAL</p>
             ` : ''}
           </div>
         </body>

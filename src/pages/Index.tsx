@@ -69,10 +69,10 @@ const Index = () => {
           <div className="flex justify-between items-center py-6">
             <div>
               <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                Ateliê Celia Severo.
+                Ateliê Celia Severo
               </h1>
               <p className="text-muted-foreground mt-1">
-                Sistema de gestão para seu ateliê de costura
+                Sistema de gestão para seu ateliê de costura.
               </p>
             </div>
             <div className="flex items-center gap-4">
