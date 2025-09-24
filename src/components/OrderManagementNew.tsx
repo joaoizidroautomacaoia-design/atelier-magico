@@ -615,9 +615,10 @@ const OrderManagement = () => {
         <head>
           <title>Pedido - ${order.clients?.name}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 20px; }
-            .order-info { margin-bottom: 30px; }
+            body { font-family: Arial, sans-serif; padding: 25px; }
+            .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 20px; }
+            .order-info { margin-bottom: 20px; }
+            .order-info>p {margin:0 0 10px 0;}
             .garment { margin-bottom: 20px; border: 1px solid #ccc; padding: 15px; }
             .garment-title { font-weight: bold; font-size: 16px; margin-bottom: 10px; }
             .service { margin-left: 20px; margin-bottom: 10px; }
@@ -631,14 +632,13 @@ const OrderManagement = () => {
         </head>
         <body>
           <div class="header">
-            <h1>Pedido de Serviço</h1>
+            <h1>Pedido de Serviço - Ateliê Célia Severo</h1>
             <p>Data: ${formatDate(order.created_at)}</p>
           </div>
           
           <div class="order-info">
             <p><strong>Cliente:</strong> ${order.clients?.name}</p>
             <p><strong>Telefone:</strong> ${order.clients?.phone}</p>
-            <p><strong>Status:</strong> ${order.payment_status === 'pago' ? 'Pago' : 'Não Pago'}</p>
           </div>
           
           <div class="services">
