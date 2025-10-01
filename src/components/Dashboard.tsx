@@ -198,68 +198,64 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header with quick actions */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h2 className="text-2xl font-bold">Dashboard</h2>
-          <p className="text-muted-foreground">Visão geral do seu ateliê</p>
+          <h2 className="text-xl md:text-2xl font-bold">Dashboard</h2>
+          <p className="text-sm md:text-base text-muted-foreground">Visão geral do seu ateliê</p>
         </div>
-        {/*<Button className="bg-gradient-primary">
-          <Plus className="w-4 h-4 mr-2" />
-          Novo Pedido
-        </Button>*/}
       </div>
 
       {/* Top Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
         <Card className="shadow-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Clientes</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6">
+            <CardTitle className="text-xs md:text-sm font-medium">Clientes</CardTitle>
+            <Users className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalClients}</div>
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            <div className="text-lg md:text-2xl font-bold">{stats.totalClients}</div>
           </CardContent>
         </Card>
 
         <Card className="shadow-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Serviços</CardTitle>
-            <Scissors className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6">
+            <CardTitle className="text-xs md:text-sm font-medium">Serviços</CardTitle>
+            <Scissors className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalServices}</div>
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            <div className="text-lg md:text-2xl font-bold">{stats.totalServices}</div>
           </CardContent>
         </Card>
 
         <Card className="shadow-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pedidos</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6">
+            <CardTitle className="text-xs md:text-sm font-medium">Pedidos</CardTitle>
+            <FileText className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalOrders}</div>
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            <div className="text-lg md:text-2xl font-bold">{stats.totalOrders}</div>
           </CardContent>
         </Card>
 
         <Card className="shadow-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita Mês</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6">
+            <CardTitle className="text-xs md:text-sm font-medium">Receita Mês</CardTitle>
+            <DollarSign className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">R$ {stats.monthlyRevenue.toFixed(2)}</div>
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            <div className="text-base md:text-2xl font-bold">R$ {stats.monthlyRevenue.toFixed(2)}</div>
           </CardContent>
         </Card>
 
         <Card className="shadow-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">A Receber</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6">
+            <CardTitle className="text-xs md:text-sm font-medium">A Receber</CardTitle>
+            <Clock className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">R$ {stats.monthlyPending.toFixed(2)}</div>
+          <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+            <div className="text-base md:text-2xl font-bold">R$ {stats.monthlyPending.toFixed(2)}</div>
           </CardContent>
         </Card>
       </div>

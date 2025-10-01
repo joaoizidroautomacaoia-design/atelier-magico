@@ -3,17 +3,20 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Scissors, FileText, Plus, LogOut } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, Scissors, FileText, Plus, LogOut, Settings, Menu } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/components/Dashboard";
 import ClientManagement from "@/components/ClientManagement";
 import ServiceManagement from "@/components/ServiceManagement";
+import PixSettings from "@/components/PixSettings";
 import OrderManagement from "@/components/OrderManagementNew";
 
 const Index = () => {
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'services' | 'orders'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'settings' | 'orders'>('dashboard');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [stats, setStats] = useState([
     { title: "Clientes", value: "0", icon: Users, color: "bg-gradient-primary" },
     { title: "Serviços", value: "0", icon: Scissors, color: "bg-gradient-secondary" },
@@ -65,51 +68,69 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-accent">
       <header className="bg-white shadow-card border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+          <div className="flex justify-between items-center py-3 md:py-6">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-lg sm:text-2xl md:text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent truncate">
                 Ateliê Celia Severo
               </h1>
-              <p className="text-muted-foreground mt-1">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 hidden sm:block">
                 Sistema de gestão para seu ateliê de costura.
               </p>
             </div>
-            <div className="flex items-center gap-4">
+            
+            {/* Mobile Menu Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden ml-2"
+            >
+              <Menu className="w-4 h-4" />
+            </Button>
+
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center gap-2 lg:gap-4">
               <div className="flex items-center gap-2">
-                <img 
-                  src={user.user_metadata?.avatar_url} 
-                  alt="Avatar" 
-                  className="w-8 h-8 rounded-full"
-                />
-                <span className="text-sm font-medium">{user.user_metadata?.full_name}</span>
+                {user.user_metadata?.avatar_url && (
+                  <img 
+                    src={user.user_metadata?.avatar_url} 
+                    alt="Avatar" 
+                    className="w-8 h-8 rounded-full"
+                  />
+                )}
+                <span className="text-sm font-medium hidden lg:inline">{user.user_metadata?.full_name}</span>
               </div>
-              <nav className="flex space-x-2">
+              <nav className="flex space-x-1 lg:space-x-2">
                 <Button
                   variant={activeTab === 'dashboard' ? 'default' : 'outline'}
                   onClick={() => setActiveTab('dashboard')}
-                  className="transition-smooth"
+                  size="sm"
+                  className="transition-smooth text-xs lg:text-sm"
                 >
                   Dashboard
                 </Button>
                 <Button
                   variant={activeTab === 'clients' ? 'default' : 'outline'}
                   onClick={() => setActiveTab('clients')}
-                  className="transition-smooth"
+                  size="sm"
+                  className="transition-smooth text-xs lg:text-sm"
                 >
                   Clientes
                 </Button>
                 <Button
-                  variant={activeTab === 'services' ? 'default' : 'outline'}
-                  onClick={() => setActiveTab('services')}
-                  className="transition-smooth"
+                  variant={activeTab === 'settings' ? 'default' : 'outline'}
+                  onClick={() => setActiveTab('settings')}
+                  size="sm"
+                  className="transition-smooth text-xs lg:text-sm"
                 >
-                  Serviços
+                  Configurações
                 </Button>
                 <Button
                   variant={activeTab === 'orders' ? 'default' : 'outline'}
                   onClick={() => setActiveTab('orders')}
-                  className="transition-smooth"
+                  size="sm"
+                  className="transition-smooth text-xs lg:text-sm"
                 >
                   Pedidos
                 </Button>
@@ -124,10 +145,57 @@ const Index = () => {
               </Button>
             </div>
           </div>
+
+          {/* Mobile Navigation Dropdown */}
+          {mobileMenuOpen && (
+            <div className="md:hidden pb-3 space-y-2 animate-fade-in">
+              <Button
+                variant={activeTab === 'dashboard' ? 'default' : 'outline'}
+                onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
+                className="w-full justify-start"
+                size="sm"
+              >
+                Dashboard
+              </Button>
+              <Button
+                variant={activeTab === 'clients' ? 'default' : 'outline'}
+                onClick={() => { setActiveTab('clients'); setMobileMenuOpen(false); }}
+                className="w-full justify-start"
+                size="sm"
+              >
+                Clientes
+              </Button>
+              <Button
+                variant={activeTab === 'settings' ? 'default' : 'outline'}
+                onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}
+                className="w-full justify-start"
+                size="sm"
+              >
+                Configurações
+              </Button>
+              <Button
+                variant={activeTab === 'orders' ? 'default' : 'outline'}
+                onClick={() => { setActiveTab('orders'); setMobileMenuOpen(false); }}
+                className="w-full justify-start"
+                size="sm"
+              >
+                Pedidos
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={signOut}
+                className="w-full justify-start"
+                size="sm"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sair
+              </Button>
+            </div>
+          )}
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 md:py-8">
         {activeTab === 'dashboard' && (
           <div className="animate-fade-in">
             <Dashboard />
@@ -140,9 +208,20 @@ const Index = () => {
           </div>
         )}
 
-        {activeTab === 'services' && (
+        {activeTab === 'settings' && (
           <div className="animate-fade-in">
-            <ServiceManagement />
+            <Tabs defaultValue="services" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4 md:mb-6">
+                <TabsTrigger value="services" className="text-xs sm:text-sm md:text-base">Serviços</TabsTrigger>
+                <TabsTrigger value="pix" className="text-xs sm:text-sm md:text-base">Chave Pix</TabsTrigger>
+              </TabsList>
+              <TabsContent value="services">
+                <ServiceManagement />
+              </TabsContent>
+              <TabsContent value="pix">
+                <PixSettings />
+              </TabsContent>
+            </Tabs>
           </div>
         )}
 

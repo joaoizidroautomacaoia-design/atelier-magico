@@ -666,14 +666,40 @@ const OrderManagement = () => {
           ` : ''}
           
           <div class="total-section">
-            <!-- Subtotal (valor antes do desconto) -->
-            <div class="total-line">
-              Subtotal: ${formatCurrency(order.total / (1 - order.discount / 100))}
-            </div>
-            <!-- Total final -->
-            <div class="final-total">
-              Total: ${formatCurrency(order.total)}
-            </div>
+            ${(() => {
+              // Calcular desconto agregado de todos os serviços
+              const orderServices = order.order_services || [];
+              let subtotalBeforeDiscount = 0;
+              let totalIndividualDiscounts = 0;
+              
+              orderServices.forEach((os: any) => {
+                const servicePrice = os.services.price;
+                const discount = os.individual_discount || 0;
+                subtotalBeforeDiscount += servicePrice;
+                totalIndividualDiscounts += servicePrice * (discount / 100);
+              });
+              
+              const subtotalAfterIndividualDiscounts = subtotalBeforeDiscount - totalIndividualDiscounts;
+              const generalDiscount = order.discount || 0;
+              const generalDiscountAmount = subtotalAfterIndividualDiscounts * (generalDiscount / 100);
+              const finalTotal = subtotalAfterIndividualDiscounts - generalDiscountAmount;
+              
+              const totalDiscounts = totalIndividualDiscounts + generalDiscountAmount;
+              
+              return `
+                <div class="total-line" style="text-decoration: underline;">
+                  Subtotal: ${formatCurrency(subtotalBeforeDiscount)}
+                </div>
+                ${totalDiscounts > 0 ? `
+                  <div class="total-line">
+                    Desconto: ${formatCurrency(totalDiscounts)}
+                  </div>
+                ` : ''}
+                <div class="final-total">
+                  Total: ${formatCurrency(finalTotal)}
+                </div>
+              `;
+            })()}
           </div>
 
           

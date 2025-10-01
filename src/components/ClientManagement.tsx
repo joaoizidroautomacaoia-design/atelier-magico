@@ -137,32 +137,32 @@ const ClientManagement = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <Card className="shadow-card">
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5 text-primary" />
+              <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
+                <User className="h-5 w-5 md:h-6 md:w-6 text-primary" />
                 Gestão de Clientes
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm md:text-base mt-1">
                 Cadastre e gerencie as informações dos seus clientes
               </CardDescription>
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={openNewDialog} className="bg-gradient-primary hover:opacity-90 transition-smooth">
+                <Button onClick={openNewDialog} className="bg-gradient-primary hover:opacity-90 transition-smooth w-full sm:w-auto h-10 md:h-11 text-sm md:text-base">
                   <Plus className="h-4 w-4 mr-2" />
                   Novo Cliente
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
+              <DialogContent className="w-[95vw] max-w-[425px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>
+                  <DialogTitle className="text-lg md:text-xl">
                     {editingClient ? "Editar Cliente" : "Novo Cliente"}
                   </DialogTitle>
-                  <DialogDescription>
+                  <DialogDescription className="text-sm md:text-base">
                     {editingClient 
                       ? "Edite as informações do cliente aqui." 
                       : "Adicione um novo cliente ao sistema."
@@ -171,30 +171,32 @@ const ClientManagement = () => {
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Nome</Label>
+                    <Label htmlFor="name" className="text-sm md:text-base">Nome</Label>
                     <Input
                       id="name"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       placeholder="Nome completo do cliente"
+                      className="h-10 md:h-11 text-sm md:text-base"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Telefone</Label>
+                    <Label htmlFor="phone" className="text-sm md:text-base">Telefone</Label>
                     <Input
                       id="phone"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       placeholder="(11) 99999-9999"
+                      className="h-10 md:h-11 text-sm md:text-base"
                       required
                     />
                   </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4">
+                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="w-full sm:w-auto h-10 md:h-11 text-sm md:text-base">
                       Cancelar
                     </Button>
-                    <Button type="submit" className="bg-gradient-primary hover:opacity-90">
+                    <Button type="submit" className="bg-gradient-primary hover:opacity-90 w-full sm:w-auto h-10 md:h-11 text-sm md:text-base">
                       {editingClient ? "Salvar" : "Cadastrar"}
                     </Button>
                   </div>
@@ -206,34 +208,30 @@ const ClientManagement = () => {
         <CardContent>
           {loading ? (
             <div className="text-center py-8 text-muted-foreground">
-              <p>Carregando clientes...</p>
+              <p className="text-sm md:text-base">Carregando clientes...</p>
             </div>
           ) : clients.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">Nenhum cliente cadastrado</p>
-              <p className="text-sm">Comece adicionando seu primeiro cliente</p>
+              <p className="text-base md:text-lg font-medium">Nenhum cliente cadastrado</p>
+              <p className="text-xs md:text-sm">Comece adicionando seu primeiro cliente</p>
             </div>
           ) : (
-            <div className="rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead className="w-[100px]">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {clients.map((client) => (
-                    <TableRow key={client.id} className="hover:bg-muted/50 transition-smooth">
-                      <TableCell className="font-medium">{client.name}</TableCell>
-                      <TableCell className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        {client.phone}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
+            <>
+              {/* Mobile View - Cards */}
+              <div className="block md:hidden space-y-3">
+                {clients.map((client) => (
+                  <Card key={client.id} className="p-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{client.name}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                            <Phone className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{client.phone}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 ml-2">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -251,12 +249,56 @@ const ClientManagement = () => {
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
-                      </TableCell>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Desktop View - Table */}
+              <div className="hidden md:block rounded-lg border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Telefone</TableHead>
+                      <TableHead className="w-[100px]">Ações</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {clients.map((client) => (
+                      <TableRow key={client.id} className="hover:bg-muted/50 transition-smooth">
+                        <TableCell className="font-medium">{client.name}</TableCell>
+                        <TableCell className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          {client.phone}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(client)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(client.id)}
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
