@@ -526,72 +526,90 @@ const OrderManagement = () => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
-  const generatePixQRCode = async (value: number): Promise<string> => {
+  const generatePixQRCode = async (value: number, orderId?: string): Promise<string> => {
     try {
-      // Fetch Pix settings from database
       const { data: pixSettings } = await supabase
         .from('pix_settings')
         .select('pix_key, pix_key_type')
         .maybeSingle();
 
-      const pixKey = pixSettings?.pix_key || "14997232910";
-      const merchantName = "ATELIER CELIA SEVERO";
-      const merchantCity = "SAO PAULO";
+      if (!pixSettings?.pix_key) {
+        console.warn('Chave Pix não configurada. QR Code não será gerado.');
+        return '';
+      }
+
+      const normalizePixKey = (key: string, type?: string) => {
+        const t = (type || '').toLowerCase();
+        if (t === 'phone') {
+          const digits = key.replace(/\D/g, '');
+          const withCountry = digits.startsWith('55') ? digits : `55${digits}`;
+          return `+${withCountry}`;
+        }
+        if (t === 'cpf' || t === 'cnpj') {
+          return key.replace(/\D/g, '');
+        }
+        if (t === 'email') {
+          return key.trim().toLowerCase();
+        }
+        return key.trim();
+      };
+
+      const pixKey = normalizePixKey(pixSettings.pix_key, pixSettings.pix_key_type);
+      const merchantName = "ATELIER CELIA SEVERO".slice(0, 25).toUpperCase();
+      const merchantCity = "SAO PAULO".slice(0, 15).toUpperCase();
       const amount = value.toFixed(2);
       
-      const formatField = (id: string, value: string) => {
-        const length = value.length.toString().padStart(2, '0');
-        return id + length + value;
+      const formatField = (id: string, val: string) => {
+        const len = val.length.toString().padStart(2, '0');
+        return id + len + val;
       };
       
-      let payload = "";
-      payload += formatField("00", "01");
-      payload += formatField("01", "12");
+      let payload = '';
+      payload += formatField('00', '01'); // Payload Format Indicator
+      payload += formatField('01', '11'); // Point of Initiation Method - static
       
-      let pixInfo = "";
-      pixInfo += formatField("00", "BR.GOV.BCB.PIX");
-      pixInfo += formatField("01", pixKey);
-      payload += formatField("26", pixInfo);
+      // Merchant Account Information (26)
+      let mai = '';
+      mai += formatField('00', 'BR.GOV.BCB.PIX'); // GUI
+      mai += formatField('01', pixKey); // Pix key
+      payload += formatField('26', mai);
       
-      payload += formatField("52", "0000");
-      payload += formatField("53", "986");
-      payload += formatField("54", amount);
-      payload += formatField("58", "BR");
-      payload += formatField("59", merchantName);
-      payload += formatField("60", merchantCity);
+      payload += formatField('52', '0000'); // MCC
+      payload += formatField('53', '986');  // Currency BRL
+      if (Number(amount) > 0) {
+        payload += formatField('54', amount); // Amount
+      }
+      payload += formatField('58', 'BR'); // Country
+      payload += formatField('59', merchantName); // Merchant Name
+      payload += formatField('60', merchantCity); // Merchant City
       
-      payload += "6304";
+      // Additional Data Field Template (62) with TXID (05) - recommended
+      const txidRaw = (orderId || `PED${Date.now()}`).replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 25) || 'PIX';
+      const addData = formatField('05', txidRaw);
+      payload += formatField('62', addData);
       
+      // CRC
+      payload += '6304';
       const crc16 = (data: string): string => {
-        let crc = 0xFFFF;
-        const polynomial = 0x1021;
-        
+        let crc = 0xffff;
+        const poly = 0x1021;
         for (let i = 0; i < data.length; i++) {
           crc ^= (data.charCodeAt(i) << 8);
           for (let j = 0; j < 8; j++) {
-            if (crc & 0x8000) {
-              crc = (crc << 1) ^ polynomial;
-            } else {
-              crc <<= 1;
-            }
-            crc &= 0xFFFF;
+            crc = (crc & 0x8000) ? ((crc << 1) ^ poly) : (crc << 1);
+            crc &= 0xffff;
           }
         }
-        
         return crc.toString(16).toUpperCase().padStart(4, '0');
       };
-      
       const finalPayload = payload + crc16(payload);
       
       const qrCodeDataURL = await QRCode.toDataURL(finalPayload, {
         width: 256,
         margin: 1,
-        color: {
-          dark: '#000000FF',
-          light: '#FFFFFFFF'
-        },
+        color: { dark: '#000000FF', light: '#FFFFFFFF' },
         errorCorrectionLevel: 'H',
-        type: 'image/png'
+        type: 'image/png',
       });
       return qrCodeDataURL;
     } catch (error) {
@@ -614,7 +632,7 @@ const OrderManagement = () => {
       return groups;
     }, {});
 
-    const qrCodeImage = await generatePixQRCode(order.total);
+    const qrCodeImage = await generatePixQRCode(order.total, order.id);
 
     const printContent = `
       <!DOCTYPE html>
