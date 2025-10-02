@@ -738,7 +738,19 @@ const OrderManagement = () => {
 
     printWindow.document.write(printContent);
     printWindow.document.close();
-    printWindow.print();
+    
+    // Aguardar o carregamento completo das imagens antes de imprimir
+    if (qrCodeImage) {
+      const img = new Image();
+      img.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      };
+      img.src = qrCodeImage;
+    } else {
+      printWindow.print();
+    }
   };
 
   const getTodaysOrders = () => {
