@@ -688,7 +688,7 @@ const OrderManagement = () => {
               <p style="font-size: 12px; color: #000000ff;">
                 Escaneie o QR Code com seu aplicativo bancário para efetuar o pagamento
               </p>
-              <p style="font-size: 20px; color: #000; text-decoration: underline;">CUPOM SEM VALOR FISCAL</p>
+              <p style="font-size: 15px; color: #000; text-decoration: underline;">CUPOM SEM VALOR FISCAL</p>
             ` : ''}
           </div>
         </body>
