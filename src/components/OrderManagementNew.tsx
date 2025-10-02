@@ -527,64 +527,71 @@ const OrderManagement = () => {
   };
 
   const generatePixQRCode = async (value: number): Promise<string> => {
-    const pixKey = "14997232910";
-    const merchantName = "COMERCIANTE";
-    const merchantCity = "SAO PAULO";
-    const amount = value.toFixed(2);
-    
-    const formatField = (id: string, value: string) => {
-      const length = value.length.toString().padStart(2, '0');
-      return id + length + value;
-    };
-    
-    let payload = "";
-    payload += formatField("00", "01");
-    payload += formatField("01", "12");
-    
-    let pixInfo = "";
-    pixInfo += formatField("00", "BR.GOV.BCB.PIX");
-    pixInfo += formatField("01", pixKey);
-    payload += formatField("26", pixInfo);
-    
-    payload += formatField("52", "0000");
-    payload += formatField("53", "986");
-    payload += formatField("54", amount);
-    payload += formatField("58", "BR");
-    payload += formatField("59", merchantName);
-    payload += formatField("60", merchantCity);
-    
-    payload += "6304";
-    
-    const crc16 = (data: string): string => {
-      let crc = 0xFFFF;
-      const polynomial = 0x1021;
-      
-      for (let i = 0; i < data.length; i++) {
-        crc ^= (data.charCodeAt(i) << 8);
-        for (let j = 0; j < 8; j++) {
-          if (crc & 0x8000) {
-            crc = (crc << 1) ^ polynomial;
-          } else {
-            crc <<= 1;
-          }
-          crc &= 0xFFFF;
-        }
-      }
-      
-      return crc.toString(16).toUpperCase().padStart(4, '0');
-    };
-    
-    const finalPayload = payload + crc16(payload);
-    
     try {
+      // Fetch Pix settings from database
+      const { data: pixSettings } = await supabase
+        .from('pix_settings')
+        .select('pix_key, pix_key_type')
+        .maybeSingle();
+
+      const pixKey = pixSettings?.pix_key || "14997232910";
+      const merchantName = "ATELIER CELIA SEVERO";
+      const merchantCity = "SAO PAULO";
+      const amount = value.toFixed(2);
+      
+      const formatField = (id: string, value: string) => {
+        const length = value.length.toString().padStart(2, '0');
+        return id + length + value;
+      };
+      
+      let payload = "";
+      payload += formatField("00", "01");
+      payload += formatField("01", "12");
+      
+      let pixInfo = "";
+      pixInfo += formatField("00", "BR.GOV.BCB.PIX");
+      pixInfo += formatField("01", pixKey);
+      payload += formatField("26", pixInfo);
+      
+      payload += formatField("52", "0000");
+      payload += formatField("53", "986");
+      payload += formatField("54", amount);
+      payload += formatField("58", "BR");
+      payload += formatField("59", merchantName);
+      payload += formatField("60", merchantCity);
+      
+      payload += "6304";
+      
+      const crc16 = (data: string): string => {
+        let crc = 0xFFFF;
+        const polynomial = 0x1021;
+        
+        for (let i = 0; i < data.length; i++) {
+          crc ^= (data.charCodeAt(i) << 8);
+          for (let j = 0; j < 8; j++) {
+            if (crc & 0x8000) {
+              crc = (crc << 1) ^ polynomial;
+            } else {
+              crc <<= 1;
+            }
+            crc &= 0xFFFF;
+          }
+        }
+        
+        return crc.toString(16).toUpperCase().padStart(4, '0');
+      };
+      
+      const finalPayload = payload + crc16(payload);
+      
       const qrCodeDataURL = await QRCode.toDataURL(finalPayload, {
-        width: 200,
-        margin: 2,
+        width: 256,
+        margin: 1,
         color: {
-          dark: '#000000',
-          light: '#FFFFFF'
+          dark: '#000000FF',
+          light: '#FFFFFFFF'
         },
-        errorCorrectionLevel: 'M'
+        errorCorrectionLevel: 'H',
+        type: 'image/png'
       });
       return qrCodeDataURL;
     } catch (error) {
@@ -626,8 +633,17 @@ const OrderManagement = () => {
             .total-line { margin-bottom: 5px; }
             .final-total { font-weight: bold; font-size: 18px; }
             .pix-section { margin-top: 40px; border-top: 2px solid #000; padding-top: 20px; text-align: center; page-break-inside: avoid; }
-            .qr-code { margin: 20px 0; }
-            @media print { body { margin: 0; } }
+            .qr-code { margin: 20px auto; display: block; }
+            .qr-code img { display: block; margin: 0 auto; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            @media print { 
+              body { margin: 0; } 
+              .qr-code img { 
+                filter: none !important; 
+                opacity: 1 !important;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+              }
+            }
           </style>
         </head>
         <body>
@@ -703,20 +719,19 @@ const OrderManagement = () => {
           </div>
 
           
-          <div class="pix-section">
-            <h3>Pagamento via Pix</h3>
-            <p><strong>Chave Pix:</strong> 14997232910</p>
-            <p><strong>Valor:</strong> ${formatCurrency(order.total)}</p>
-            ${qrCodeImage ? `
+          ${qrCodeImage ? `
+            <div class="pix-section">
+              <h3>Pagamento via Pix</h3>
+              <p><strong>Valor:</strong> ${formatCurrency(order.total)}</p>
               <div class="qr-code">
-                <img src="${qrCodeImage}" alt="QR Code Pix" style="width: 200px; height: 200px;" />
+                <img src="${qrCodeImage}" alt="QR Code Pix" style="width: 256px; height: 256px; image-rendering: crisp-edges; image-rendering: pixelated;" />
               </div>
-              <p style="font-size: 12px; color: #000000ff;">
+              <p style="font-size: 12px; color: #000;">
                 Escaneie o QR Code com seu aplicativo bancário para efetuar o pagamento
               </p>
-              <p style="font-size: 20px; color: #000; text-decoration: underline;">CUPOM SEM VALOR FISCAL</p>
-            ` : ''}
-          </div>
+              <p style="font-size: 16px; color: #000; font-weight: bold; margin-top: 20px;">CUPOM SEM VALOR FISCAL</p>
+            </div>
+          ` : ''}
         </body>
       </html>
     `;

@@ -119,20 +119,20 @@ const Index = () => {
                   Clientes
                 </Button>
                 <Button
-                  variant={activeTab === 'settings' ? 'default' : 'outline'}
-                  onClick={() => setActiveTab('settings')}
-                  size="sm"
-                  className="transition-smooth text-xs lg:text-sm"
-                >
-                  Configurações
-                </Button>
-                <Button
                   variant={activeTab === 'orders' ? 'default' : 'outline'}
                   onClick={() => setActiveTab('orders')}
                   size="sm"
                   className="transition-smooth text-xs lg:text-sm"
                 >
                   Pedidos
+                </Button>
+                <Button
+                  variant={activeTab === 'settings' ? 'default' : 'outline'}
+                  onClick={() => setActiveTab('settings')}
+                  size="sm"
+                  className="transition-smooth text-xs lg:text-sm"
+                >
+                  Configurações
                 </Button>
               </nav>
               <Button 
@@ -148,47 +148,46 @@ const Index = () => {
 
           {/* Mobile Navigation Dropdown */}
           {mobileMenuOpen && (
-            <div className="md:hidden pb-3 space-y-2 animate-fade-in">
+            <div className="md:hidden pb-3 flex justify-center gap-2 animate-fade-in">
               <Button
                 variant={activeTab === 'dashboard' ? 'default' : 'outline'}
                 onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
-                className="w-full justify-start"
-                size="sm"
+                size="icon"
+                className="h-12 w-12"
               >
-                Dashboard
+                <Users className="h-5 w-5" />
               </Button>
               <Button
                 variant={activeTab === 'clients' ? 'default' : 'outline'}
                 onClick={() => { setActiveTab('clients'); setMobileMenuOpen(false); }}
-                className="w-full justify-start"
-                size="sm"
+                size="icon"
+                className="h-12 w-12"
               >
-                Clientes
-              </Button>
-              <Button
-                variant={activeTab === 'settings' ? 'default' : 'outline'}
-                onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}
-                className="w-full justify-start"
-                size="sm"
-              >
-                Configurações
+                <Users className="h-5 w-5" />
               </Button>
               <Button
                 variant={activeTab === 'orders' ? 'default' : 'outline'}
                 onClick={() => { setActiveTab('orders'); setMobileMenuOpen(false); }}
-                className="w-full justify-start"
-                size="sm"
+                size="icon"
+                className="h-12 w-12"
               >
-                Pedidos
+                <FileText className="h-5 w-5" />
+              </Button>
+              <Button
+                variant={activeTab === 'settings' ? 'default' : 'outline'}
+                onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}
+                size="icon"
+                className="h-12 w-12"
+              >
+                <Settings className="h-5 w-5" />
               </Button>
               <Button 
                 variant="outline" 
                 onClick={signOut}
-                className="w-full justify-start"
-                size="sm"
+                size="icon"
+                className="h-12 w-12"
               >
-                <LogOut className="w-4 h-4 mr-2" />
-                Sair
+                <LogOut className="h-5 w-5" />
               </Button>
             </div>
           )}
