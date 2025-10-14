@@ -627,6 +627,7 @@ const OrderManagement = () => {
             .final-total { font-weight: bold; font-size: 18px; }
             .pix-section { margin-top: 40px; border-top: 2px solid #000; padding-top: 20px; text-align: center; page-break-inside: avoid; }
             .qr-code { margin: 20px 0; }
+            #body {margin: 0px; padding: 0px;}
             @media print { body { margin: 0; } }
           </style>
         </head>
@@ -683,7 +684,7 @@ const OrderManagement = () => {
             <p><strong>Valor:</strong> ${formatCurrency(order.total)}</p>
             ${qrCodeImage ? `
               <div class="qr-code">
-                <img src="${qrCodeImage}" alt="QR Code Pix" style="width: 200px; height: 200px;" />
+                <img src="${qrCodeImage}" alt="QR Code Pix" style="width: 150px; height: 150px;" />
               </div>
               <p style="font-size: 12px; color: #000000ff;">
                 Escaneie o QR Code com seu aplicativo bancário para efetuar o pagamento
