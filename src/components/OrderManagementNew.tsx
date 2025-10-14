@@ -627,11 +627,10 @@ const OrderManagement = () => {
             .final-total { font-weight: bold; font-size: 18px; }
             .pix-section { margin-top: 40px; border-top: 2px solid #000; padding-top: 20px; text-align: center; page-break-inside: avoid; }
             .qr-code { margin: 20px 0; }
-            #body {margin: 0px; padding: 0px;}
             @media print { body { margin: 0; } }
           </style>
         </head>
-        <body>
+        <body style="margin: 0px; padding: 0px">
           <div class="header">
             <h1>Pedido de Serviço - Ateliê Célia Severo</h1>
             <p>Rua Eduardo Carlos Pereira, 267 - Vila Mano</p>
