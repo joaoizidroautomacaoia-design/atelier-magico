@@ -95,6 +95,7 @@ export type Database = {
           general_observations: string | null
           id: string
           payment_status: string | null
+          status: string | null
           total: number
           updated_at: string
           user_id: string | null
@@ -107,6 +108,7 @@ export type Database = {
           general_observations?: string | null
           id?: string
           payment_status?: string | null
+          status?: string | null
           total: number
           updated_at?: string
           user_id?: string | null
@@ -119,6 +121,7 @@ export type Database = {
           general_observations?: string | null
           id?: string
           payment_status?: string | null
+          status?: string | null
           total?: number
           updated_at?: string
           user_id?: string | null

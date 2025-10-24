@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, Edit, Trash2, FileText, X, Check, Eye, ChevronDown, ChevronUp, Printer } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, X, Check, Eye, ChevronDown, ChevronUp, Printer, CheckCircle, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import QRCode from "qrcode";
@@ -53,6 +53,7 @@ interface Order {
   total: number;
   general_observations: string;
   payment_status: string;
+  status: string;
   confirmed: boolean;
   created_at: string;
   updated_at?: string;
@@ -454,6 +455,84 @@ const OrderManagement = () => {
       toast({
         title: "Erro",
         description: "Erro ao alterar status de pagamento.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const markAsReady = async (orderId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'pronto' ? 'pendente' : 'pronto';
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: `Pedido marcado como ${newStatus}!`,
+      });
+      fetchData();
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao alterar status do pedido.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const shareOrder = async (order: Order) => {
+    try {
+      const { data: pixSettings } = await supabase
+        .from('pix_settings')
+        .select('pix_key, pix_key_type')
+        .maybeSingle();
+
+      const garmentGroups = order.order_services?.reduce((groups: any, os) => {
+        const garmentName = os.garment_name || 'Sem nome';
+        if (!groups[garmentName]) {
+          groups[garmentName] = [];
+        }
+        groups[garmentName].push(os);
+        return groups;
+      }, {}) || {};
+
+      let servicesText = '';
+      Object.entries(garmentGroups).forEach(([garmentName, services]: [string, any]) => {
+        servicesText += `\n*${garmentName}*\n`;
+        services.forEach((service: any) => {
+          servicesText += `  • ${service.services.name} - ${formatCurrency(service.services.price)}`;
+          if (service.individual_discount > 0) {
+            servicesText += ` (Desconto: ${service.individual_discount}%)`;
+          }
+          servicesText += '\n';
+        });
+      });
+
+      const message = `🧵 *Pedido - Ateliê Celia Severo*
+
+*Cliente:* ${order.clients?.name}
+*Telefone:* ${order.clients?.phone}
+*Data:* ${formatDate(order.created_at)}
+
+*Serviços:*${servicesText}
+*Total:* ${formatCurrency(order.total)}
+*Status Pagamento:* ${order.payment_status}
+*Status Pedido:* ${order.status || 'pendente'}
+
+${pixSettings?.pix_key ? `*Chave Pix:* ${pixSettings.pix_key} (${pixSettings.pix_key_type})` : ''}
+
+${order.general_observations ? `*Observações:*\n${order.general_observations}` : ''}`;
+
+      const whatsappUrl = `https://wa.me/${order.clients?.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, '_blank');
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao compartilhar pedido.",
         variant: "destructive",
       });
     }
@@ -1284,8 +1363,27 @@ const OrderManagement = () => {
                                   size="sm"
                                   onClick={() => confirmPayment(order.id, order.payment_status)}
                                   className="text-green-600 hover:text-green-700"
+                                  title="Confirmar Pagamento"
                                 >
                                   <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => markAsReady(order.id, order.status || 'pendente')}
+                                  className={order.status === 'pronto' ? 'text-green-600 bg-green-50' : 'text-orange-600 hover:text-orange-700'}
+                                  title="Pedido Pronto"
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => shareOrder(order)}
+                                  className="text-blue-600 hover:text-blue-700"
+                                  title="Compartilhar"
+                                >
+                                  <Share2 className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   variant="outline"
@@ -1410,8 +1508,27 @@ const OrderManagement = () => {
                                   size="sm"
                                   onClick={() => confirmPayment(order.id, order.payment_status)}
                                   className="text-green-600 hover:text-green-700"
+                                  title="Confirmar Pagamento"
                                 >
                                   <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => markAsReady(order.id, order.status || 'pendente')}
+                                  className={order.status === 'pronto' ? 'text-green-600 bg-green-50' : 'text-orange-600 hover:text-orange-700'}
+                                  title="Pedido Pronto"
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => shareOrder(order)}
+                                  className="text-blue-600 hover:text-blue-700"
+                                  title="Compartilhar"
+                                >
+                                  <Share2 className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   variant="outline"
