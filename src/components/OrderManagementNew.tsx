@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, Edit, Trash2, FileText, X, Check, Eye, ChevronDown, ChevronUp, Printer, CheckCircle, Share2 } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, X, Check, Eye, ChevronDown, ChevronUp, Printer, CheckCircle, Share2, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import QRCode from "qrcode";
@@ -90,7 +90,18 @@ const OrderManagement = () => {
   const [collapsedGarments, setCollapsedGarments] = useState<number[]>([]);
   const [collapsedServices, setCollapsedServices] = useState<number[]>([]);
   const [showTodayOnly, setShowTodayOnly] = useState(false);
+  const [orderSearchTerm, setOrderSearchTerm] = useState("");
   const { toast } = useToast();
+
+  // Filtrar pedidos por nome do cliente ou telefone
+  const filterOrders = (ordersList: Order[]) => {
+    if (!orderSearchTerm.trim()) return ordersList;
+    const searchLower = orderSearchTerm.toLowerCase();
+    return ordersList.filter(order => 
+      order.clients?.name?.toLowerCase().includes(searchLower) ||
+      order.clients?.phone?.includes(orderSearchTerm)
+    );
+  };
 
   useEffect(() => {
     fetchData();
@@ -858,10 +869,18 @@ ${order.general_observations ? `*Observações:*\n${order.general_observations}`
   };
 
   const getFilteredOrders = () => {
-    const ordersToFilter = showTodayOnly ? getTodaysOrders() : orders;
-    return ordersToFilter.filter(order => 
-      activeTab === 'pagos' ? order.payment_status === 'pago' : order.payment_status === 'não pago'
-    );
+    let ordersToFilter = showTodayOnly ? getTodaysOrders() : orders;
+    
+    // Aplicar filtro de pesquisa por nome ou telefone do cliente
+    if (orderSearchTerm.trim()) {
+      const searchLower = orderSearchTerm.toLowerCase();
+      ordersToFilter = ordersToFilter.filter(order => 
+        order.clients?.name?.toLowerCase().includes(searchLower) ||
+        order.clients?.phone?.includes(orderSearchTerm)
+      );
+    }
+    
+    return ordersToFilter;
   };
 
   const filteredOrders = getFilteredOrders();
@@ -1267,6 +1286,17 @@ ${order.general_observations ? `*Observações:*\n${order.general_observations}`
             <div className="text-center">Carregando...</div>
           ) : (
             <>
+              {/* Campo de pesquisa de pedidos */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Pesquisar por nome do cliente ou telefone..."
+                  value={orderSearchTerm}
+                  onChange={(e) => setOrderSearchTerm(e.target.value)}
+                  className="pl-10 h-10 md:h-11"
+                />
+              </div>
+
               <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'pagos' | 'nao-pagos')}>
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="nao-pagos">Não Pagos ({filteredOrders.filter(order => order.payment_status === 'não pago').length})</TabsTrigger>
