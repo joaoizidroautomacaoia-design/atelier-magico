@@ -730,7 +730,7 @@ ${order.general_observations ? `*Observações:*\n${order.general_observations}`
         <head>
           <title>Pedido - ${order.clients?.name}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 25px; font-size: 50%;}
+            body { font-family: Arial, sans-serif; padding: 25px; font-size: 70%;}
             .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 20px; }
             .order-info { margin-bottom: 20px; }
             .order-info>p {margin:0 0 10px 0;}
@@ -832,7 +832,7 @@ ${order.general_observations ? `*Observações:*\n${order.general_observations}`
               <h3>Pagamento via Pix</h3>
               <p><strong>Valor:</strong> ${formatCurrency(order.total)}</p>
               <div class="qr-code">
-                <img src="${qrCodeImage}" alt="QR Code Pix" style="width: 256px; height: 256px; image-rendering: crisp-edges; image-rendering: pixelated;" />
+                <img src="${qrCodeImage}" alt="QR Code Pix" style="width: 240px; height: 240px; image-rendering: crisp-edges; image-rendering: pixelated;" />
               </div>
               <p style="font-size: 12px; color: #000;">
                 Escaneie o QR Code com seu aplicativo bancário para efetuar o pagamento
