@@ -769,7 +769,7 @@ ${order.general_observations ? `*Observações:*\n${order.general_observations}`
           <div class="services">
             <h3>Serviços:</h3>
             ${Object.entries(garmentGroups).map(([garmentName, services]: [string, any]) => `
-              <div class="garment">
+              <div class="garment" style="margin-botton: 10px;>
                 <div class="garment-title">${garmentName}</div>
                 ${services.map((service: any) => `
                   <div class="service">
