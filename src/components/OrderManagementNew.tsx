@@ -95,11 +95,16 @@ const OrderManagement = () => {
 
   // Filtrar pedidos por nome do cliente ou telefone
   const filterOrders = (ordersList: Order[]) => {
-    if (!orderSearchTerm.trim()) return ordersList;
-    const searchLower = orderSearchTerm.toLowerCase();
-    return ordersList.filter(order => 
-      order.clients?.name?.toLowerCase().includes(searchLower) ||
-      order.clients?.phone?.includes(orderSearchTerm)
+    let filtered = ordersList;
+    if (orderSearchTerm.trim()) {
+      const searchLower = orderSearchTerm.toLowerCase();
+      filtered = filtered.filter(order => 
+        order.clients?.name?.toLowerCase().includes(searchLower) ||
+        order.clients?.phone?.includes(orderSearchTerm)
+      );
+    }
+    return filtered.sort((a, b) => 
+      (a.clients?.name || '').localeCompare(b.clients?.name || '', 'pt-BR')
     );
   };
 
