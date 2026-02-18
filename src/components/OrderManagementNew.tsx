@@ -875,17 +875,7 @@ ${order.general_observations ? `*Observações:*\n${order.general_observations}`
 
   const getFilteredOrders = () => {
     let ordersToFilter = showTodayOnly ? getTodaysOrders() : orders;
-    
-    // Aplicar filtro de pesquisa por nome ou telefone do cliente
-    if (orderSearchTerm.trim()) {
-      const searchLower = orderSearchTerm.toLowerCase();
-      ordersToFilter = ordersToFilter.filter(order => 
-        order.clients?.name?.toLowerCase().includes(searchLower) ||
-        order.clients?.phone?.includes(orderSearchTerm)
-      );
-    }
-    
-    return ordersToFilter;
+    return filterOrders(ordersToFilter);
   };
 
   const filteredOrders = getFilteredOrders();
