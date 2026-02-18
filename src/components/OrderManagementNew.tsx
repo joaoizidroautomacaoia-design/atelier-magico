@@ -730,11 +730,11 @@ ${order.general_observations ? `*Observações:*\n${order.general_observations}`
         <head>
           <title>Pedido - ${order.clients?.name}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 25px; }
+            body { font-family: Arial, sans-serif; padding: 25px; font-size: 50%;}
             .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 20px; }
             .order-info { margin-bottom: 20px; }
             .order-info>p {margin:0 0 10px 0;}
-            .garment { margin-bottom: 20px; border: 1px solid #ccc; padding: 15px; }
+            .garment { margin-bottom: 1px; border: 1px solid #ccc; padding: 15px; }
             .garment-title { font-weight: bold; font-size: 16px; margin-bottom: 10px; }
             .service { margin-left: 20px; margin-bottom: 10px; }
             .total-section { margin-top: 30px; border-top: 2px solid #000; padding-top: 20px; text-align: right; }
@@ -769,7 +769,7 @@ ${order.general_observations ? `*Observações:*\n${order.general_observations}`
           <div class="services">
             <h3>Serviços:</h3>
             ${Object.entries(garmentGroups).map(([garmentName, services]: [string, any]) => `
-              <div class="garment" style="margin-bottom: 1px;">
+              <div class="garment">
                 <div class="garment-title">${garmentName}</div>
                 ${services.map((service: any) => `
                   <div class="service">
