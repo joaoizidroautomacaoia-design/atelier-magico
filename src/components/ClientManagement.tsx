@@ -40,7 +40,7 @@ const ClientManagement = () => {
       const { data, error } = await supabase
         .from('clients')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('name', { ascending: true });
 
       if (error) throw error;
       setClients(data || []);

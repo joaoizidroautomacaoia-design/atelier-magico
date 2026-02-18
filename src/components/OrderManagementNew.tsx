@@ -110,8 +110,8 @@ const OrderManagement = () => {
   const fetchData = async () => {
     try {
       const [clientsData, servicesData, ordersData] = await Promise.all([
-        supabase.from('clients').select('*').order('name'),
-        supabase.from('services').select('*').order('name'),
+        supabase.from('clients').select('*').order('name', { ascending: true }),
+        supabase.from('services').select('*').order('name', { ascending: true }),
         supabase.from('orders').select(`
           *,
           clients(id, name, phone),
