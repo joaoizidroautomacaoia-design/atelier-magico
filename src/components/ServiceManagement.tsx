@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Edit, Trash2, Scissors, DollarSign } from "lucide-react";
+import { Plus, Edit, Trash2, Scissors, DollarSign, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,7 +23,12 @@ const ServiceManagement = () => {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [formData, setFormData] = useState({ name: "", price: "" });
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+
+  const filteredServices = services.filter(service =>
+    service.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   useEffect(() => {
     fetchServices();
@@ -34,7 +39,7 @@ const ServiceManagement = () => {
       const { data, error } = await supabase
         .from('services')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('name', { ascending: true });
 
       if (error) throw error;
       setServices(data || []);
@@ -226,11 +231,20 @@ const ServiceManagement = () => {
           </div>
         </CardHeader>
         <CardContent>
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar serviço..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-10 md:h-11 text-sm md:text-base"
+            />
+          </div>
           {loading ? (
             <div className="text-center py-8 text-muted-foreground">
               <p className="text-sm md:text-base">Carregando serviços...</p>
             </div>
-          ) : services.length === 0 ? (
+          ) : filteredServices.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Scissors className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p className="text-base md:text-lg font-medium">Nenhum serviço cadastrado</p>
@@ -240,7 +254,7 @@ const ServiceManagement = () => {
             <>
               {/* Mobile View - Cards */}
               <div className="block md:hidden space-y-3">
-                {services.map((service) => (
+                {filteredServices.map((service) => (
                   <Card key={service.id} className="p-4">
                     <div className="space-y-2">
                       <div className="flex justify-between items-start">
@@ -286,7 +300,7 @@ const ServiceManagement = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {services.map((service) => (
+                    {filteredServices.map((service) => (
                       <TableRow key={service.id} className="hover:bg-muted/50 transition-smooth">
                         <TableCell className="font-medium">{service.name}</TableCell>
                         <TableCell className="flex items-center gap-2">
