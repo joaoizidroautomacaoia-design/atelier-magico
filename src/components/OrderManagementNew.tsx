@@ -738,7 +738,7 @@ ${order.general_observations ? `*Observações:*\n${order.general_observations}`
             body { font-family: Arial, sans-serif; padding: 25px; font-size: 70%;}
             .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 20px; }
             .order-info { margin-bottom: 20px; }
-            .order-info>p {margin:0 0 10px 0;}
+            .order-info>p {margin:0 0 10px 0; font-size: 16px;}
             .garment { margin-bottom: 1px; border: 1px solid #ccc; padding: 15px; }
             .garment-title { font-weight: bold; font-size: 16px; margin-bottom: 10px; }
             .service { margin-left: 20px; margin-bottom: 10px; }
